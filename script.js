@@ -19,6 +19,11 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function resetToInputScreen() {
+  sessionStorage.removeItem('metsuBattleData');
+  window.location.href = 'index.html';
+}
+
 async function generateResponse(prompt, userMessage, options = {}) {
   const {
     model = CONFIG.LLM_MODEL,
@@ -248,4 +253,10 @@ if (generateBtn) generateBtn.addEventListener('click', async () => await generat
 if (monsterEl) monsterEl.addEventListener('pointerup', attackMonster);
 if (replayBtn) replayBtn.addEventListener('click', resetToInputScreen);
 
-window.addEventListener('beforeunload', disconnectZigSim);
+window.addEventListener('beforeunload', () => {
+  if (typeof disconnectZigSim === 'function') disconnectZigSim();
+});
+
+if (document.getElementById('battle-screen') && typeof initializeBattlePage === 'function') {
+  initializeBattlePage();
+}

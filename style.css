@@ -146,7 +146,7 @@ button:hover {
 }
 
 #battle-screen {
-    display: none;
+    display: flex;
     position: fixed;
     inset: 0;
     z-index: 20;
@@ -198,7 +198,7 @@ button:hover {
 }
 
 #reset-overlay {
-    display: none;
+    display: flex;
     position: fixed;
     inset: 0;
     background: var(--bg-color);
@@ -218,4 +218,10 @@ button:hover {
     pointer-events: none;
     border-radius: 50%;
     z-index: 30;
+}
+
+.battle-message {
+    font-size: 1.2rem;
+    color: #fff;
+    margin: 10px 0;
 }
