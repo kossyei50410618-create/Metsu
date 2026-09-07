@@ -15,6 +15,7 @@ const monsters = {
 
 let monsterType = 'normal';
 let currentCategory = 'その他';
+const BATTLE_DATA_KEY = 'metsuBattleData';
 
 async function generateMonsterImage(typeName, isExVersion = false) {
   const resolvedType = typeName || monsterType;
@@ -24,14 +25,31 @@ async function generateMonsterImage(typeName, isExVersion = false) {
 }
 
 async function generateMonster(analysisText = null) {
-  const rawText = getElement('input-text').value;
-  const sourceText = analysisText || rawText;
+  const inputText = getElement('input-text');
+  const rawText = inputText ? inputText.value.trim() : '';
+  const storedData = readBattleData();
+  const sourceText = analysisText || rawText || storedData?.analysisText || storedData?.rawText;
   if (!sourceText) return alert('内容を入力してください');
 
-  getElement('status-text').innerText = '分類中... ベクトルを使って判定しています';
-  const category = await classifyCategoryWithVectors(sourceText);
+  const category = storedData?.category && !analysisText && !rawText
+    ? storedData.category
+    : await classifyCategoryWithVectors(sourceText);
   monsterType = category.monster;
   currentCategory = category.label;
+
+  if (!getElement('battle-screen')) {
+    saveBattleData({
+      rawText: rawText || storedData?.rawText || sourceText,
+      analysisText: analysisText || storedData?.analysisText || '',
+      category,
+      isExForm: typeof micMaxVolume === 'number' && micMaxVolume > EX_VOLUME_THRESHOLD,
+    });
+    window.location.href = 'battle.html';
+    return;
+  }
+
+  const statusText = getElement('status-text');
+  if (statusText) statusText.innerText = '分類中... ベクトルを使って判定しています';
 
   maxHp = Math.floor(Math.random() * 81) + 100;
   hp = maxHp;
@@ -39,7 +57,7 @@ async function generateMonster(analysisText = null) {
   const monsterEl = getElement('monster');
   const monsterImg = getElement('monster-img');
   const style = monsters[monsterType] || monsters.normal;
-  const isExForm = micMaxVolume > EX_VOLUME_THRESHOLD;
+  const isExForm = storedData?.isExForm || micMaxVolume > EX_VOLUME_THRESHOLD;
   const imageSrc = `assets/${monsterType}${isExForm ? '_ex' : ''}.bmp`;
 
   monsterEl.style.background = style.color;
@@ -53,7 +71,7 @@ async function generateMonster(analysisText = null) {
     monsterImg.alt = '画像読み込み失敗';
   };
 
-  getElement('status-text').innerText = `画像読み込み中... ${currentCategory}${isExForm ? ' (EX: 最大音圧 0.3超)' : ''}`;
+  if (statusText) statusText.innerText = `画像読み込み中... ${currentCategory}${isExForm ? ' (EX: 最大音圧 0.3超)' : ''}`;
 
   try {
     monsterImg.src = await generateMonsterImage(monsterType, isExForm);
@@ -63,15 +81,34 @@ async function generateMonster(analysisText = null) {
   }
 
   getElement('attack-hint').innerText = '';
-  getElement('status-text').innerText = `ENTITY DETECTED: ${currentCategory}${isExForm ? ' (EX: 最大音圧 0.3超)' : ''}`;
-  getElement('display-text').innerText = analysisText ? `解析: ${analysisText}` : `入力: ${rawText}`;
+  if (statusText) statusText.innerText = `ENTITY DETECTED: ${currentCategory}${isExForm ? ' (EX: 最大音圧 0.3超)' : ''}`;
+  getElement('display-text').innerText = storedData?.analysisText ? `解析: ${storedData.analysisText}` : `入力: ${sourceText}`;
   getElement('category-label').innerText = `分類: ${currentCategory}`;
   syncHpUi();
 
-  getElement('input-screen').style.display = 'none';
-  getElement('battle-screen').style.display = 'flex';
   setWeakSpot(monsterType);
   startZigAttackDetection();
+}
+
+function saveBattleData(data) {
+  sessionStorage.setItem(BATTLE_DATA_KEY, JSON.stringify(data));
+}
+
+function readBattleData() {
+  try {
+    return JSON.parse(sessionStorage.getItem(BATTLE_DATA_KEY) || 'null');
+  } catch (error) {
+    sessionStorage.removeItem(BATTLE_DATA_KEY);
+    return null;
+  }
+}
+
+async function initializeBattlePage() {
+  if (!readBattleData()) {
+    window.location.href = 'index.html';
+    return;
+  }
+  await generateMonster();
 }
 
 function setWeakSpot(type) {

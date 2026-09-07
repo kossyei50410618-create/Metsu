@@ -188,25 +188,10 @@ function createParticles() {
 
 function showReplayScreen() {
   stopZigAttackDetection();
-  getElement('battle-screen').style.display = 'none';
-  getElement('reset-overlay').style.display = 'flex';
-  getElement('input-text').value = '';
-  getElement('reset-msg').innerText = '討伐完了！';
+  window.location.href = 'result.html';
 }
 
 function destroyMonster() {
   showReplayScreen();
 }
 
-function resetToInputScreen() {
-  stopZigAttackDetection();
-  getElement('reset-overlay').style.display = 'none';
-  getElement('input-screen').style.display = 'flex';
-  getElement('battle-screen').style.display = 'none';
-  getElement('status-text').innerText = '思考のごみ箱';
-  getElement('display-text').innerText = '';
-  getElement('category-label').innerText = '';
-  getElement('attack-hint').innerText = '';
-  hp = maxHp;
-  syncHpUi();
-}
