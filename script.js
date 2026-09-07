@@ -66,7 +66,12 @@ async function analyzeSpeechText(transcript) {
   const apiKey = CONFIG.SPEECH_API_KEY || CONFIG.GEMINI_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な SPEECH_API_KEY を設定してください。");
 
-  const prompt = `あなたは日本語の音声入力を解析するAIです。発話された内容のテーマ、感情、要点を簡潔にまとめた短い日本語の文章のみを返してください。`;
+  const prompt = `あなたはユーザーのストレスや怒りの音声入力を解析し、分類エンジンに渡すための要約を生成する専門AIです。
+以下の発話を読み取り、悩み・怒りのテーマと感情を抽出してください。
+【重要】
+後の分類精度を上げるため、発話内容が以下の「対象カテゴリ」のどれに最も近いかを推測し、そのカテゴリに関連する具体的なキーワード（仕事、上司、お金、時間、健康、勉強、スマホなど）を意図的に含めて要約してください。
+対象カテゴリ：対人関係、家族・生活環境、仕事・キャリア、お金・経済、健康・心身、生き方・自己実現、時間、デジタル、勉強、確率・不確実性、習慣・行動、趣味・余暇
+出力形式：「〜に対する怒り。」のような形で、1〜2文の簡潔な日本語のみを返すこと。`;
   const userMessage = `以下の発話を解析してください：\n${transcript}`;
 
   return await generateResponse(prompt, userMessage, {
