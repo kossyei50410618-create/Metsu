@@ -42,7 +42,7 @@ const categories = [
     ]
   },
   {
-    key: 'family', label: '家族・生活環境の悩み', monster: 'human',
+    key: 'family', label: '家族・生活環境の悩み', monster: 'family',
     keywords: [
       { word: '家庭環境', weight: 3 }, { word: '家族', weight: 2 },
       { word: '家庭', weight: 2 }, { word: '両親', weight: 2 },
@@ -118,9 +118,9 @@ const categories = [
       { word: 'メンタルヘルス', weight: 3 }, { word: '体調不良', weight: 2 },
       { word: '精神', weight: 1 }, { word: 'ストレス', weight: 2 },
       { word: 'うつ', weight: 2 }, { word: '不眠', weight: 2 },
-      { word: '健康', weight: 1 }, { word: '体調', weight: 1 },
+      { word: '体調', weight: 1 },
       { word: '睡眠', weight: 1 }, { word: '病気', weight: 1 },
-      { word: '疲れ', weight: 1 }, { word: '不安', weight: 1 },
+      { word: '疲れ', weight: 1 }, { word: '痛い', weight: 2 }, { word: '不安', weight: 1 },
       { word: '心身', weight: 1 }, { word: '運動', weight: 1 },
       { word: 'ダイエット', weight: 1 }, { word: '休息', weight: 1 },
       { word: '疲労', weight: 1 }, { word: '頭痛', weight: 1 },
@@ -129,7 +129,7 @@ const categories = [
       { word: '過労', weight: 2 }, { word: '倦怠感', weight: 1 },
     ],
     fallbackKeywords: [
-      { word: 'しんどい', weight: 1 }, { word: 'つらい', weight: 1 },
+      { word: '健康', weight: 1 }, { word: 'しんどい', weight: 1 }, { word: 'つらい', weight: 1 },
       { word: 'だるい', weight: 1 }, { word: '眠れない', weight: 1 },
       { word: '食欲がない', weight: 1 }, { word: '気分が沈む', weight: 1 },
       { word: '限界', weight: 1 },
@@ -241,7 +241,7 @@ const categories = [
     ]
   },
   {
-    key: 'leisure', label: '趣味・余暇の悩み', monster: 'normal',
+    key: 'leisure', label: '趣味・余暇の悩み', monster: 'leisure',
     keywords: [
       { word: '趣味', weight: 1 }, { word: '遊び', weight: 1 },
       { word: '旅行', weight: 1 }, { word: '休日', weight: 1 },
