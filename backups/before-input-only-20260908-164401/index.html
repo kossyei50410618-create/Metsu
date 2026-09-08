@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -18,6 +18,21 @@
     <main class="shell game-main">
         <div class="lobby-heading"><div><p class="eyebrow">STRESS BREAKER / METSU</p><h1>そのモヤモヤを、<span>討伐せよ。</span></h1></div><p>気持ちを言葉に。モンスターを召喚。<br>パンチングボールを叩いて、モヤモヤを撃破。</p></div>
         <div class="game-layout">
+            <aside class="mission-column">
+                <section class="hud-panel mission-panel" aria-labelledby="mission-title">
+                    <div class="panel-heading"><span class="panel-symbol" aria-hidden="true">⌖</span><h2 id="mission-title">ミッション</h2><span class="panel-code">01</span></div>
+                    <h3>今日のストレスを<br>撃破しよう。</h3><p class="muted">入力したモヤモヤが敵になる。<br>HPをゼロにして、気持ちをリセット。</p>
+                    <ol class="mission-steps"><li class="current"><span>01</span><div><strong>気持ちを入力</strong><small>文字でも、音声でもOK</small></div><b aria-hidden="true">◀</b></li><li><span>02</span><div><strong>モンスターとバトル</strong><small>パンチでHPを削ろう</small></div></li><li><span>03</span><div><strong>討伐完了</strong><small>ひと息ついて、次の一歩へ</small></div></li></ol>
+                    <div class="mission-bottom"><span>MISSION TYPE</span><strong>ストレス討伐</strong></div>
+                </section>
+            </aside>
+            <section class="summon-stage" aria-labelledby="preview-heading">
+                <div class="target-heading"><p class="eyebrow" id="preview-heading">MONSTER ARCHIVE</p><h2 id="preview-name">対人関係のモンスター</h2><span class="target-subtitle" id="preview-status">モヤモヤを入力すると、ターゲットが変化</span></div>
+                <div class="monster-display"><span class="target-corner top-left"></span><span class="target-corner top-right"></span><span class="target-corner bottom-left"></span><span class="target-corner bottom-right"></span><span class="scan-label">ENTITY / PREVIEW</span><div class="summon-ring ring-back"></div><img id="preview-monster" src="assets/human.png" alt="対人関係のモンスター" width="186" height="232"><div class="summon-ring ring-floor"></div><span class="stage-coordinate" aria-hidden="true">滅 / METSU</span></div>
+                <div class="stage-footer"><span class="pulse-dot" aria-hidden="true"></span><span>言葉にして、モンスターを呼び出そう。</span></div>
+                <div class="monster-select" aria-label="モンスターの入力例"><button type="button" data-example="上司との対人関係がつらい" data-monster="human" aria-label="対人関係の入力例"><img src="assets/human.png" alt="" width="36" height="44"><span>対人関係</span></button><button type="button" data-example="勉強も課題もテストも多すぎる" data-monster="study" aria-label="勉強の入力例"><img src="assets/study.png" alt="" width="36" height="44"><span>勉強</span></button><button type="button" data-example="スマホ依存とSNS疲れでイライラする" data-monster="digital" aria-label="デジタルの入力例"><img src="assets/digital.png" alt="" width="36" height="44"><span>デジタル</span></button></div>
+                <p class="archive-note">12 TYPES + UNKNOWN / 気持ちに合わせて出現</p>
+            </section>
             <section id="input-screen" class="hud-panel input-card" aria-labelledby="input-title">
                 <div class="panel-heading"><span class="panel-symbol" aria-hidden="true">▧</span><h2 id="input-title">召喚コンソール</h2><span class="panel-code">INPUT</span></div>
                 <div class="input-content"><label for="input-text">今、何にモヤモヤしてる？</label><p id="input-help" class="muted">ひとことでも大丈夫。日本語で入力しよう。</p><textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…" aria-describedby="input-help input-error"></textarea><div class="input-meta"><span>✎ ターゲットデータ</span><span id="character-count">0 文字</span></div>

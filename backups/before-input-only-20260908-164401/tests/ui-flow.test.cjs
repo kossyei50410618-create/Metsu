@@ -74,19 +74,16 @@ test('unknown categories use a nonempty fallback image', async () => {
   assert.ok(fs.statSync(path.join(root, 'assets/monster-fallback.svg')).size > 0);
 });
 
-test('typing and voice transcript updates do not classify or reveal a monster', () => {
+test('lobby preview follows input and resets when cleared', () => {
   const a = app('index.html');
-  a.run('classifyCategory = () => { throw new Error("Premature classification"); }; classifyCategoryWithVectors = classifyCategory;');
   a.elements.get('input-text').value = '勉強も課題もテストも多すぎる';
-  a.elements.get('input-text').listeners.input();
-  assert.equal(a.elements.get('character-count').textContent, `${Array.from(a.elements.get('input-text').value).length} 文字`);
-  a.run("document.getElementById('input-text').dispatchEvent(new Event('input', { bubbles: true }));");
-  assert.equal(a.elements.has('preview-monster'), false);
-  assert.equal(a.elements.has('preview-heading'), false);
-  assert.equal(a.state.has('metsuBattleData'), false);
+  a.run('refreshInputFeedback()');
+  assert.equal(a.elements.get('preview-monster').src, 'assets/study.png');
+  assert.equal(a.elements.get('preview-heading').textContent, 'TARGET PREVIEW');
   a.elements.get('input-text').value = '';
   a.run('refreshInputFeedback()');
-  assert.equal(a.elements.get('character-count').textContent, '0 文字');
+  assert.equal(a.elements.get('preview-monster').src, 'assets/human.png');
+  assert.equal(a.elements.get('preview-heading').textContent, 'MONSTER ARCHIVE');
 });
 
 test('failed generation restores controls with a retry message', async () => {
