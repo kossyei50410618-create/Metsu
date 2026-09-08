@@ -2,7 +2,6 @@
 let hp = 100;
 let maxHp = 100;
 let lastAttackTime = 0;
-let attackCount = 0;
 let weakSpot = null;
 
 // 討伐結果画面（result.html）で使う統計値
