@@ -42,7 +42,7 @@ const categories = [
     ]
   },
   {
-    key: 'family', label: '家族・生活環境の悩み', monster: 'human',
+    key: 'family', label: '家族・生活環境の悩み', monster: 'family',
     keywords: [
       { word: '家庭環境', weight: 3 }, { word: '家族', weight: 2 },
       { word: '家庭', weight: 2 }, { word: '両親', weight: 2 },
@@ -241,7 +241,7 @@ const categories = [
     ]
   },
   {
-    key: 'leisure', label: '趣味・余暇の悩み', monster: 'normal',
+    key: 'leisure', label: '趣味・余暇の悩み', monster: 'leisure',
     keywords: [
       { word: '趣味', weight: 1 }, { word: '遊び', weight: 1 },
       { word: '旅行', weight: 1 }, { word: '休日', weight: 1 },
