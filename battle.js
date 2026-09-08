@@ -2,6 +2,7 @@
 let hp = 100;
 let maxHp = 100;
 let lastAttackTime = 0;
+let attackCount = 0;
 let weakSpot = null;
 
 // 討伐結果画面（result.html）で使う統計値
@@ -85,9 +86,13 @@ function connectZigSim() {
   zigSocket.onmessage = (event) => handleZigSimData(event.data);
   zigSocket.onerror = () => {
     const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'ZIG SIM中継サーバーに接続できません（server.pyの起動を確認してください）';
+    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
   };
-  zigSocket.onclose = () => { zigSocket = null; };
+  zigSocket.onclose = () => {
+    zigSocket = null;
+    const hintEl = getElement('attack-hint');
+    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
+  };
 }
 
 function disconnectZigSim() {
@@ -118,7 +123,10 @@ function syncHpUi() {
   const safeHp = Math.max(0, Math.min(safeMaxHp, hp));
   const percent = (safeHp / safeMaxHp) * 100;
   hpFill.style.width = `${percent}%`;
-  hpValue.innerText = `HP: ${safeHp}`;
+  hpValue.innerText = `HP: ${safeHp} / ${safeMaxHp}`;
+  const hpBar = getElement('hp-bar');
+  hpBar.setAttribute('aria-valuemax', safeMaxHp);
+  hpBar.setAttribute('aria-valuenow', safeHp);
 }
 
 function showAttackFeedback(message) {
@@ -131,6 +139,7 @@ function showAttackFeedback(message) {
 }
 
 function attackMonster(eventOrPower) {
+  if (hp <= 0 || !zigAttackActive) return;
   const now = Date.now();
   const inputPower = typeof eventOrPower === 'number' ? eventOrPower : 1;
   let baseDamage = 0;
@@ -151,6 +160,10 @@ function attackMonster(eventOrPower) {
   }
 
   const damage = Math.round(baseDamage * inputPower);
+  attackCount += 1;
+  const counter = getElement('attack-count');
+  if (counter) counter.textContent = String(attackCount).padStart(2, '0');
+  feedback = `HIT! −${damage} HP`;
   if (damage > 0) {
     hp -= damage;
     if (hp < 0) hp = 0;

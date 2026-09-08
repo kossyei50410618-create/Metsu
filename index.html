@@ -1,67 +1,35 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
     <meta charset="UTF-8">
-    <title>マジ、ストレスMAX、ムカついて滅</title>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@500&display=swap"
-        rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080b19">
+    <title>Metsu — モヤモヤ討伐ロビー</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
-<body>
-
-    <header>
-        <h1>マジ、ストレスMAX、ムカついて滅</h1>
-        <p id="status-text">思考のごみ箱</p>
+<body class="lobby-page">
+    <a class="skip-link" href="#input-text">入力へスキップ</a>
+    <div class="world-grid" aria-hidden="true"></div>
+    <header class="site-header shell">
+        <a class="brand" href="index.html" aria-label="Metsu ホーム"><span class="brand-mark">滅</span> metsu<span class="brand-dot">.</span></a>
+        <nav aria-label="メインナビゲーション"><a class="active" href="index.html" aria-current="page">ロビー <span>LOBBY</span></a></nav>
+        <span class="connection-pill"><i aria-hidden="true"></i> TEXT MODE / READY</span>
     </header>
-
-    <div id="input-screen">
-        <textarea id="input-text" placeholder="今、モヤモヤしていることを書いてください..."></textarea>
-        <div id="input-actions">
-            <button id="voice-btn">🎙 音声入力</button>
-            <button id="generate-btn">モンスター生成</button>
+    <main class="shell game-main">
+        <div class="lobby-heading"><div><p class="eyebrow">STRESS BREAKER / METSU</p><h1>そのモヤモヤを、<span>討伐せよ。</span></h1></div><p>気持ちを言葉に。モンスターを召喚。<br>パンチングボールを叩いて、モヤモヤを撃破。</p></div>
+        <div class="game-layout">
+            <section id="input-screen" class="hud-panel input-card" aria-labelledby="input-title">
+                <div class="panel-heading"><span class="panel-symbol" aria-hidden="true">▧</span><h2 id="input-title">召喚コンソール</h2><span class="panel-code">INPUT</span></div>
+                <div class="input-content"><label for="input-text">今、何にモヤモヤしてる？</label><p id="input-help" class="muted">ひとことでも大丈夫。日本語で入力しよう。</p><textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…" aria-describedby="input-help input-error"></textarea><div class="input-meta"><span>✎ ターゲットデータ</span><span id="character-count">0 文字</span></div>
+                <p id="input-error" class="error-message" role="alert"></p>
+                <div id="input-actions"><button id="generate-btn" class="button primary" type="button"><span>討伐開始</span><span class="button-en">BATTLE START</span><span aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary" type="button">◉ 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
+                <p id="pipeline-stage" role="status" aria-live="polite"></p><p id="mic-status" class="mic-status" role="status">文字入力なら、マイクは不要です。</p>
+                <details class="mic-settings"><summary>マイク設定 <span>OPTIONAL</span></summary><div id="mic-meter"><p class="quiet">感度を調整できます。環境音の調整中は静かにして待ちます。</p><div class="mic-meter-controls"><button id="mic-start-btn" type="button">マイク確認</button><button id="mic-calibrate-btn" type="button" disabled>環境音調整</button><button id="mic-stop-btn" type="button">停止</button></div><div class="mic-meter-display"><span>音量</span><div class="mic-meter-track"><div id="mic-meter-fill"></div></div><span id="mic-meter-value">0.00</span></div><div id="mic-sensitivity"><label for="mic-sensitivity-slider">感度</label><input id="mic-sensitivity-slider" type="range" min="0" max="3" step="0.1" value="1.5"><output id="mic-sensitivity-value" for="mic-sensitivity-slider">1.5</output></div><div class="mic-tone-display"><span>トーン</span><strong id="mic-tone-frequency">-- Hz</strong><strong id="mic-tone-label">音声なし</strong></div><div class="mic-tone-display"><span>抑揚</span><strong id="mic-intonation-value">0.000</strong></div><p id="mic-noise-floor" class="quiet">ノイズフロア: 未較正</p></div></details>
+                <p class="privacy-note">音声は認識・解析に外部サービスを利用し、話し終わると自動でバトルへ進みます。</p></div>
+            </section>
         </div>
-        <div id="mic-meter">
-            <div class="mic-meter-controls">
-                <button id="mic-start-btn" type="button">マイクを開始</button>
-                <button id="mic-calibrate-btn" type="button" disabled>環境音を較正</button>
-            </div>
-            <p id="mic-status" class="category-label">マイク未接続</p>
-            <div class="mic-meter-display">
-                <span>音量</span>
-                <div class="mic-meter-track">
-                    <div id="mic-meter-fill"></div>
-                </div>
-                <span id="mic-meter-value">0.00</span>
-            </div>
-            <div class="mic-tone-display">
-                <span>声のトーン</span>
-                <strong id="mic-tone-frequency">-- Hz</strong>
-                <strong id="mic-tone-label">音声なし</strong>
-            </div>
-            <div class="mic-tone-display">
-                <span>声の抑揚（標準偏差）</span>
-                <strong id="mic-intonation-value">0.000</strong>
-            </div>
-            <p id="mic-noise-floor" class="category-label">ノイズフロア: 未較正</p>
-        </div>
-        <div id="mic-sensitivity" style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
-            <label for="mic-sensitivity-slider"
-                style="font-family: 'Orbitron', sans-serif; color: #64ffda; letter-spacing: 1px; font-size: 0.9rem;">感度</label>
-            <input id="mic-sensitivity-slider" type="range" min="0" max="3" step="0.1" value="1.5"
-                style="width: 180px;">
-            <span id="mic-sensitivity-value"
-                style="font-family: 'Orbitron', sans-serif; color: #ffd700; min-width: 2.5rem; text-align: right;">1.5</span>
-        </div>
-        <p id="pipeline-stage" class="category-label"></p>
-    </div>
-
-    <script src="mic.js"></script>
-    <script src="category.js"></script>
-    <script src="monster.js"></script>
-    <script src="script.js"></script>
+    </main>
+    <footer class="site-footer shell"><span>マジ、ストレスMAX、ムカついて滅</span><span class="footer-center">WRITE IT. SUMMON IT. BREAK IT.</span><span>METSU / STRESS BREAKER</span></footer>
+    <script src="mic.js"></script><script src="category.js"></script><script src="monster.js"></script><script src="script.js"></script><script src="ui.js"></script>
 </body>
-
 </html>

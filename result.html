@@ -1,59 +1,40 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>討伐完了 - マジ、ストレスMAX、ムカついて滅</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080b19">
+<title>クリア！ | Metsu</title>
+<link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div id="reset-overlay">
-        <p id="result-rank-badge">RANK <span id="result-rank">-</span></p>
-        <p id="reset-msg">討伐完了！</p>
-
-        <div id="result-details">
-            <div class="result-grid">
-                <div class="result-stat">
-                    <span class="result-label">討伐時間</span>
-                    <span class="result-value" id="result-time">--.--秒</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">音量 最大値</span>
-                    <span class="result-value" id="result-max-volume">--%</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">声のトーン 平均</span>
-                    <span class="result-value" id="result-avg-tone">測定なし</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">出現フォーム</span>
-                    <span class="result-value" id="result-form">通常</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">総攻撃回数</span>
-                    <span class="result-value" id="result-attack-count">0 回</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">与えた総ダメージ</span>
-                    <span class="result-value" id="result-total-damage">0</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">平均ダメージ/撃</span>
-                    <span class="result-value" id="result-avg-damage">0</span>
-                </div>
-                <div class="result-stat">
-                    <span class="result-label">会心の一撃</span>
-                    <span class="result-value" id="result-max-hit">0</span>
-                </div>
-            </div>
-
-            <p class="result-label" style="margin-top: 18px;">浄化されたモヤモヤ</p>
-            <p id="result-source-text" class="battle-message">（記録なし）</p>
-        </div>
-
-        <button id="replay-btn" style="margin-top: 24px;">REPLAY</button>
-    </div>
-    <script src="script.js"></script>
-    <script src="result.js"></script>
+<body class="result-page">
+<div class="world-grid" aria-hidden="true"></div>
+<header class="site-header shell">
+<a class="brand" href="index.html" aria-label="Metsu ホーム">
+<span class="brand-mark">滅</span> metsu<span class="brand-dot">.</span>
+</a>
+<span class="quiet">ひと息ついて、また一歩。</span>
+</header>
+<main id="reset-overlay" class="result-card">
+<p class="eyebrow">ALL TARGETS ELIMINATED · STEP 03</p>
+<div class="victory-symbol" aria-hidden="true">✦<span>✓</span>✧</div>
+<span class="result-badge">MISSION COMPLETE</span>
+<h1 id="reset-msg">モヤモヤ、討伐完了！</h1>
+<p class="result-description">おつかれさま。<br>今はひと息ついて、肩の力を抜いてみよう。</p>
+<div class="breathing-note">
+<span aria-hidden="true">◌</span>
+<p>
+<strong>ゆっくり吸って、ゆっくり吐いて。</strong>
+<br>次の一歩は、あなたのペースで大丈夫。</p>
+</div>
+<button id="replay-btn" class="button primary" type="button">もう一度あそぶ ↻</button>
+<a class="text-link" href="index.html">ホームに戻る</a>
+</main>
+<footer class="site-footer shell">
+<span class="footer-brand">metsu.</span>
+<span>今日も、あなたの気持ちにおつかれさま。</span>
+</footer>
+<script src="script.js">
+</script>
 </body>
 </html>
