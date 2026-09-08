@@ -212,6 +212,7 @@ async function startRecognition() {
 
     stopMicMeter();
     inputText.value = transcript;
+    inputText.dispatchEvent(new Event('input', { bubbles: true }));
     updatePipelineStage('ステップ 2/4: テキスト解析を行っています');
     status.innerText = '認識完了。解析中...';
 
@@ -243,14 +244,55 @@ const voiceBtn = document.getElementById('voice-btn');
 const generateBtn = document.getElementById('generate-btn');
 const monsterEl = document.getElementById('monster');
 const replayBtn = document.getElementById('replay-btn');
-if (voiceBtn) {
-  voiceBtn.addEventListener('click', async () => {
-    await initMicMeter();
-    await startRecognition();
-  });
+let inputBusy = false;
+async function runInputAction(useVoice) {
+  if (inputBusy) return;
+  const input = getElement('input-text');
+  const error = getElement('input-error');
+  if (!useVoice && !input.value.trim()) {
+    error.textContent = '今の気持ちをひとこと入力してください。入力例も使えます。';
+    input.setAttribute('aria-invalid', 'true');
+    input.focus();
+    return;
+  }
+  inputBusy = true;
+  error.textContent = '';
+  const activeButton = useVoice ? voiceBtn : generateBtn;
+  const originalMarkup = activeButton.innerHTML;
+  const controls = document.querySelectorAll('#input-screen button, #input-screen textarea, #input-screen input');
+  const disabledStates = Array.from(controls, (control) => control.disabled);
+  controls.forEach((control) => { control.disabled = true; });
+  getElement('input-screen').setAttribute('aria-busy', 'true');
+  activeButton.textContent = useVoice ? '音声入力中…' : 'モンスターを準備中…';
+  try {
+    if (useVoice) {
+      await initMicMeter();
+      await startRecognition();
+    } else {
+      updatePipelineStage('モンスターを準備しています…');
+      await generateMonster();
+    }
+  } catch (err) {
+    error.textContent = 'うまく準備できませんでした。もう一度お試しください。';
+    updatePipelineStage('');
+  } finally {
+    inputBusy = false;
+    controls.forEach((control, index) => { control.disabled = disabledStates[index]; });
+    // Voice collection closes the microphone on completion.
+    if (useVoice) {
+      stopMicMeter();
+      getElement('mic-start-btn').disabled = false;
+      getElement('mic-calibrate-btn').disabled = true;
+    }
+    activeButton.innerHTML = originalMarkup;
+    getElement('input-screen').removeAttribute('aria-busy');
+  }
 }
-if (generateBtn) generateBtn.addEventListener('click', async () => await generateMonster());
-if (monsterEl) monsterEl.addEventListener('pointerup', attackMonster);
+if (voiceBtn) voiceBtn.addEventListener('click', () => runInputAction(true));
+if (generateBtn) generateBtn.addEventListener('click', () => runInputAction(false));
+if (monsterEl) monsterEl.addEventListener('click', attackMonster);
+const attackButton = document.getElementById('attack-button');
+if (attackButton) attackButton.addEventListener('click', attackMonster);
 if (replayBtn) replayBtn.addEventListener('click', resetToInputScreen);
 
 window.addEventListener('beforeunload', () => {

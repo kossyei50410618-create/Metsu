@@ -1,28 +1,14 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>討伐 - マジ、ストレスMAX、ムカついて滅</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+JP:wght@500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="battle-screen">
-        <p id="status-text">モンスターを召喚中...</p>
-        <div id="hp-bar"><div id="hp-fill"></div></div>
-        <p id="hp-value" class="category-label">HP: 100</p>
-        <p id="display-text" class="category-label battle-message"></p>
-        <p id="category-label" class="category-label"></p>
-        <p id="attack-hint" class="category-label"></p>
-        <div id="monster">
-            <img id="monster-img" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="モンスター">
-        </div>
-        <div id="weak-spot"></div>
-    </div>
-    <script src="mic.js"></script>
-    <script src="category.js"></script>
-    <script src="monster.js"></script>
-    <script src="battle.js"></script>
-    <script src="script.js"></script>
-</body>
-</html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#080b19"><title>バトル | Metsu</title><link rel="stylesheet" href="style.css"></head>
+<body class="battle-page">
+<div class="world-grid" aria-hidden="true"></div>
+<header class="site-header shell"><a class="brand" href="index.html" aria-label="Metsu ホーム"><span class="brand-mark">滅</span> metsu<span class="brand-dot">.</span></a><span class="battle-header-label">STRESS BREAKER / BATTLE FIELD</span><a class="back-link" href="index.html">← ロビーに戻る</a></header>
+<main class="shell battle-layout" id="battle-screen">
+    <aside class="hud-panel target-profile"><div class="panel-heading"><span aria-hidden="true">⌖</span><h2>ターゲットプロフィール</h2></div><div class="profile-content"><p class="eyebrow">INPUT DATA</p><p id="display-text" class="battle-message"></p><p class="eyebrow">THREAT CATEGORY</p><p id="category-label" class="category-label"></p><div class="profile-divider"></div><p class="eyebrow">MISSION OBJECTIVE</p><h3>モヤモヤを撃破せよ。</h3><p class="muted">敵のHPをゼロにすると討伐完了。複数のモヤモヤがあれば、次の敵が現れます。</p><div class="small-status"><i aria-hidden="true"></i> タップ操作でプレイ可能</div></div></aside>
+    <section class="arena" aria-label="モンスターバトル"><p class="eyebrow">ENTITY DETECTED</p><h1 id="status-text" role="status">モンスターを召喚中...</h1><div class="health-hud"><div id="hp-bar" role="progressbar" aria-label="モンスターの体力" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="hp-fill"></div></div><span id="hp-value">HP: 100</span></div><div class="battle-monster-stage"><div class="summon-ring ring-back"></div><button id="monster" type="button" aria-label="モンスターを攻撃"><img id="monster-img" src="assets/monster-fallback.svg" alt="モンスター" draggable="false"></button><div class="summon-ring ring-floor"></div></div><p class="tap-caption">〈 CLICK / TAP TO ATTACK 〉</p><div id="weak-spot" hidden></div></section>
+    <aside class="battle-sidebar"><section class="hud-panel command-panel"><div class="panel-heading"><span aria-hidden="true">⌘</span><h2>戦闘コマンド</h2></div><div class="command-content"><p class="eyebrow">YOUR MOVE</p><button id="attack-button" type="button" class="button primary"><span>攻撃する</span><span class="button-en">ATTACK ⟶</span></button><p class="command-hint">モンスターを直接タップしても攻撃できます。</p><div class="key-guide"><kbd>ENTER</kbd><kbd>SPACE</kbd><span>選んだボタンで攻撃</span></div><a class="button secondary" href="index.html">ロビーへ退却 <span class="button-en">RETREAT</span></a><div class="attack-stat"><span>ATTACK COUNT</span><strong id="attack-count">00</strong></div></div></section><section class="hud-panel sensor-panel"><div class="panel-heading"><span aria-hidden="true">⌁</span><h2>センサーリンク</h2><span class="panel-code">OPTIONAL</span></div><div class="sensor-content"><p id="attack-hint" class="sensor-status" role="status">接続を確認中 · タップでプレイできます。</p><details class="sensor-help"><summary>接続ガイド</summary><p>ZIG SIM と中継サーバーを接続すると、パンチングボールでも攻撃できます。未接続でもタップで遊べます。</p></details></div></section></aside>
+</main>
+<footer class="site-footer shell"><span>マジ、ストレスMAX、ムカついて滅</span><span>自分のペースで、モヤモヤを手放そう。</span><span>METSU / BATTLE FIELD</span></footer>
+<script src="mic.js"></script><script src="category.js"></script><script src="monster.js"></script><script src="battle.js"></script><script src="script.js"></script><script src="ui.js"></script>
+</body></html>
