@@ -1,5 +1,6 @@
 const EX_VOLUME_THRESHOLD = 0.7;
-const EX_VOLUME_HISTORY_LENGTH = 10;
+const MIC_SPEECH_ONSET_THRESHOLD = 0.01;
+const MIC_SILENCE_FRAME_COUNT = 10;
 const MIC_MIN_FREQUENCY = 80;
 const MIC_MAX_FREQUENCY = 1000;
 const MIC_TONE_SILENCE_THRESHOLD = 0.025;
@@ -22,6 +23,26 @@ let micCalibrating = false;
 let micVolumeCollectionActive = false;
 let micToneFrequency = null;
 let micToneLabel = '音声なし';
+let micIntonation = 0;
+let micSpeechDetected = false;
+let micSilenceFrames = 0;
+let micIntonationFinalized = false;
+
+function calculateMicIntonation(history) {
+    const speechHistory = history.filter((value) => value > MIC_SPEECH_ONSET_THRESHOLD);
+    if (speechHistory.length < 2) return 0;
+    const average = speechHistory.reduce((sum, value) => sum + value, 0) / speechHistory.length;
+    const variance = speechHistory.reduce((sum, value) => sum + (value - average) ** 2, 0) / speechHistory.length;
+    return Math.sqrt(variance);
+}
+
+function finalizeMicIntonation() {
+    if (!micSpeechDetected || micIntonationFinalized) return;
+    micIntonation = calculateMicIntonation(micVolumeHistory);
+    micIntonationFinalized = true;
+    const intonationValue = document.getElementById('mic-intonation-value');
+    if (intonationValue) intonationValue.textContent = micIntonation.toFixed(3);
+}
 
 function estimateMicTone(data, sampleRate, rms) {
     if (rms < Math.max(MIC_TONE_SILENCE_THRESHOLD, micNoiseFloor * 2)) {
@@ -58,8 +79,8 @@ function estimateMicTone(data, sampleRate, rms) {
 }
 
 function getMicToneLabel(frequency) {
-    if (frequency < 180) return '低音';
-    if (frequency < 320) return '中音';
+    if (frequency < 100) return '低音';
+    if (frequency < 200) return '中音';
     return '高音';
 }
 
@@ -75,6 +96,8 @@ function updateMicMeter() {
         meterValue.textContent = '0.00';
         if (toneFrequency) toneFrequency.textContent = '-- Hz';
         if (toneLabel) toneLabel.textContent = '音声なし';
+        const intonationValue = document.getElementById('mic-intonation-value');
+        if (intonationValue) intonationValue.textContent = micIntonation.toFixed(3);
         return;
     }
 
@@ -90,9 +113,21 @@ function updateMicMeter() {
     micToneLabel = micToneFrequency === null ? '音声なし' : getMicToneLabel(micToneFrequency);
     if (micVolumeCollectionActive) {
         micMaxVolume = Math.max(micMaxVolume, micVolume);
-        micVolumeHistory.push(micVolume);
-        if (micVolumeHistory.length > EX_VOLUME_HISTORY_LENGTH) {
-            micVolumeHistory.shift();
+        if (!micSpeechDetected) {
+            if (micVolume >= MIC_SPEECH_ONSET_THRESHOLD) {
+                micSpeechDetected = true;
+                micVolumeHistory = [micVolume];
+            }
+        } else if (!micIntonationFinalized) {
+            micVolumeHistory.push(micVolume);
+            if (micVolume <= MIC_SPEECH_ONSET_THRESHOLD) {
+                micSilenceFrames++;
+                if (micSilenceFrames >= MIC_SILENCE_FRAME_COUNT) {
+                    finalizeMicIntonation();
+                }
+            } else {
+                micSilenceFrames = 0;
+            }
         }
         if (micToneFrequency !== null) {
             micToneHistory.push(micToneFrequency);
@@ -103,6 +138,8 @@ function updateMicMeter() {
     meterValue.textContent = micVolume.toFixed(2);
     if (toneFrequency) toneFrequency.textContent = micToneFrequency === null ? '-- Hz' : `${micToneFrequency.toFixed(1)} Hz`;
     if (toneLabel) toneLabel.textContent = micToneLabel;
+    const intonationValue = document.getElementById('mic-intonation-value');
+    if (intonationValue) intonationValue.textContent = micIntonation.toFixed(3);
 
     if (micMeterRunning) requestAnimationFrame(updateMicMeter);
 }
@@ -112,6 +149,7 @@ window.getMicData = function () {
         volume: micVolume,
         toneFrequency: micToneFrequency,
         toneLabel: micToneLabel,
+        intonation: micIntonation,
     };
 };
 
@@ -119,10 +157,15 @@ window.startMicVolumeCollection = function () {
     micVolumeHistory = [];
     micToneHistory = [];
     micMaxVolume = 0;
+    micIntonation = 0;
+    micSpeechDetected = false;
+    micSilenceFrames = 0;
+    micIntonationFinalized = false;
     micVolumeCollectionActive = true;
 };
 
 window.stopMicVolumeCollection = function () {
+    finalizeMicIntonation();
     micVolumeCollectionActive = false;
 };
 

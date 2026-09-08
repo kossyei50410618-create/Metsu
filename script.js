@@ -238,7 +238,7 @@ async function startRecognition() {
   }
 }
 
-// イベントリスナー
+// イベント　リスナー
 const voiceBtn = document.getElementById('voice-btn');
 const generateBtn = document.getElementById('generate-btn');
 const monsterEl = document.getElementById('monster');

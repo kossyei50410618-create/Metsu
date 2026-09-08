@@ -231,7 +231,19 @@ function showReplayScreen() {
   window.location.href = 'result.html';
 }
 
+// 1体倒した後、キュー　に次の敵(secondaryカテゴリ)がいれば連戦、いなければ結果画面へ。
+// hasNextMonster / spawnNextMonster は monster.js 側で定義されている。
 function destroyMonster() {
   finalizeBattleResult();
+  stopZigAttackDetection();
+
+  if (typeof hasNextMonster === 'function' && hasNextMonster()) {
+    showAttackFeedback('撃破！ 次の敵が現れた...');
+    setTimeout(async () => {
+      await spawnNextMonster();
+    }, 1000);
+    return;
+  }
+
   showReplayScreen();
 }
