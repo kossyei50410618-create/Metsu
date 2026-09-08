@@ -1,17 +1,20 @@
 // category.js
 // ==== 完全ルールベース(オフライン・無料)の分類ロジック ====
-// キーワードは重み付き配列で管理し、複数カテゴリにまたがる相談文にも対応する。
+//
+// 判定は2段階:
+//   1. 主判定(keywords): 具体的で誤検出の少ないキーワード
+//   2. フォールバック判定(fallbackKeywords): 主判定が0点だった場合のみ使う、
+//      口語的・感情的な言い回し(「仕事行きたくない」「お金がない」など)
+// これにより、特定のキーワードにヒットしないカジュアルな相談文でも
+// 「その他」に落ちる割合を減らす。
 //
 // パフォーマンス設計:
-// 全カテゴリ・全キーワード(約250語)を1つのトライ木にまとめ、
-// 分類のたびにテキストを「1回だけ」走査してすべてのカテゴリのスコアを同時に計算する。
+// 主判定用・フォールバック用それぞれで1つのトライ木にまとめ、
+// 分類のたびにテキストを走査してすべてのカテゴリのスコアを同時に計算する。
 //
 // 精度設計(最長一致 / maximal munch):
-// 「職場」(career)と「職場の人間関係」(human)のように、短いキーワードが
-// より長い・より具体的なキーワードの接頭辞になっているケースがある。
-// 各開始位置で見つかったすべての一致を加点すると、「職場の人間関係」という
-// 1つのフレーズから career にも誤って加点されてしまう。
-// これを避けるため、各開始位置では「一番長く一致した単語」だけを採用する。
+// 各開始位置では「一番長く一致した単語」だけを採用し、短い単語が
+// 長い具体的なフレーズの一部でしかない場合の誤加点(無関係カテゴリへの加点)を防ぐ。
 
 const categories = [
   {
@@ -31,6 +34,12 @@ const categories = [
       { word: '恋人', weight: 1 }, { word: '相談', weight: 1 },
       { word: '嫉妬', weight: 1 }, { word: '陰口', weight: 1 },
       { word: '無視される', weight: 2 }, { word: 'ぼっち', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: '誰にも分かってもらえない', weight: 1 }, { word: '話を聞いてもらえない', weight: 1 },
+      { word: '距離を感じる', weight: 1 }, { word: '気まずい', weight: 1 },
+      { word: 'うざい', weight: 1 }, { word: 'めんどくさい人', weight: 1 },
+      { word: '嫌われ', weight: 1 }, { word: '合わない人', weight: 1 },
     ]
   },
   {
@@ -51,6 +60,11 @@ const categories = [
       { word: '親子', weight: 1 }, { word: '義理', weight: 1 },
       { word: '兄弟', weight: 1 }, { word: '姉妹', weight: 1 },
       { word: '離婚', weight: 2 }, { word: '不仲', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: '実家', weight: 1 }, { word: '帰省', weight: 1 },
+      { word: '家にいたくない', weight: 1 }, { word: '家がしんどい', weight: 1 },
+      { word: '家族に言えない', weight: 1 },
     ]
   },
   {
@@ -70,6 +84,11 @@ const categories = [
       { word: '独立', weight: 1 }, { word: '起業', weight: 1 },
       { word: 'クビ', weight: 2 }, { word: '解雇', weight: 2 },
       { word: '面接', weight: 1 }, { word: '離職', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: '仕事に行きたくない', weight: 1 }, { word: '会社行きたくない', weight: 1 },
+      { word: '働きたくない', weight: 1 }, { word: '月曜日が憂鬱', weight: 1 },
+      { word: '会社を辞めたい', weight: 1 }, { word: 'ノルマ', weight: 1 },
     ]
   },
   {
@@ -87,6 +106,11 @@ const categories = [
       { word: '税金', weight: 1 }, { word: '保険料', weight: 1 },
       { word: '物価', weight: 1 }, { word: '副収入', weight: 1 },
       { word: '奨学金', weight: 2 }, { word: '養育費', weight: 2 },
+    ],
+    fallbackKeywords: [
+      { word: 'お金がない', weight: 1 }, { word: '金欠', weight: 1 },
+      { word: '生活が苦しい', weight: 1 }, { word: 'お金の余裕がない', weight: 1 },
+      { word: '節約できない', weight: 1 }, { word: '買えない', weight: 1 },
     ]
   },
   {
@@ -104,6 +128,12 @@ const categories = [
       { word: '腰痛', weight: 1 }, { word: '通院', weight: 1 },
       { word: '薬', weight: 1 }, { word: 'パニック', weight: 2 },
       { word: '過労', weight: 2 }, { word: '倦怠感', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: 'しんどい', weight: 1 }, { word: 'つらい', weight: 1 },
+      { word: 'だるい', weight: 1 }, { word: '眠れない', weight: 1 },
+      { word: '食欲がない', weight: 1 }, { word: '気分が沈む', weight: 1 },
+      { word: '限界', weight: 1 },
     ]
   },
   {
@@ -118,6 +148,11 @@ const categories = [
       { word: '方向性', weight: 1 }, { word: '将来像', weight: 1 },
       { word: '自己成長', weight: 1 }, { word: '自己肯定感', weight: 2 },
       { word: '虚無感', weight: 2 }, { word: '燃え尽き', weight: 2 },
+    ],
+    fallbackKeywords: [
+      { word: '何がしたいか分からない', weight: 1 }, { word: 'このままでいいのか', weight: 1 },
+      { word: '自信がない', weight: 1 }, { word: '空しい', weight: 1 },
+      { word: '虚しい', weight: 1 }, { word: '何のために生きて', weight: 1 },
     ]
   },
   {
@@ -130,6 +165,10 @@ const categories = [
       { word: '予定', weight: 1 }, { word: 'スケジュール', weight: 1 },
       { word: '遅刻', weight: 1 }, { word: '忙しい', weight: 1 },
       { word: '余裕', weight: 1 }, { word: '時間配分', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: '時間が足りない', weight: 1 }, { word: '焦る', weight: 1 },
+      { word: 'ギリギリ', weight: 1 }, { word: '間に合わない', weight: 1 },
     ]
   },
   {
@@ -144,6 +183,10 @@ const categories = [
       { word: '機器', weight: 1 }, { word: 'オンライン', weight: 1 },
       { word: 'セキュリティ', weight: 1 }, { word: 'パスワード', weight: 1 },
       { word: '依存', weight: 1 }, { word: '炎上', weight: 2 },
+    ],
+    fallbackKeywords: [
+      { word: 'スマホが手放せない', weight: 1 }, { word: 'つい見てしまう', weight: 1 },
+      { word: '既読無視', weight: 1 }, { word: 'バズ', weight: 1 },
     ]
   },
   {
@@ -159,6 +202,10 @@ const categories = [
       { word: '進級', weight: 1 }, { word: '留年', weight: 1 },
       { word: '論文', weight: 1 }, { word: '卒論', weight: 1 },
       { word: '単位', weight: 1 }, { word: '偏差値', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: '勉強したくない', weight: 1 }, { word: '集中できない', weight: 1 },
+      { word: '頭に入らない', weight: 1 }, { word: '成績が上がらない', weight: 1 },
     ]
   },
   {
@@ -171,6 +218,10 @@ const categories = [
       { word: 'ありえる', weight: 1 }, { word: 'パーセント', weight: 1 },
       { word: '予測', weight: 1 }, { word: '賭け', weight: 1 },
       { word: 'リスク', weight: 1 }, { word: '運', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: 'うまくいくか不安', weight: 1 }, { word: '先が読めない', weight: 1 },
+      { word: 'どうなるか分からない', weight: 1 },
     ]
   },
   {
@@ -184,6 +235,10 @@ const categories = [
       { word: '毎日', weight: 1 }, { word: '日常', weight: 1 },
       { word: 'クセ', weight: 1 }, { word: '飲酒', weight: 1 },
       { word: '喫煙', weight: 1 }, { word: '暴飲暴食', weight: 2 },
+    ],
+    fallbackKeywords: [
+      { word: 'また同じことをしてしまう', weight: 1 }, { word: '自己嫌悪', weight: 1 },
+      { word: '三日で挫折', weight: 1 }, { word: 'ついやってしまう', weight: 1 },
     ]
   },
   {
@@ -196,6 +251,10 @@ const categories = [
       { word: 'アウトドア', weight: 1 }, { word: '散歩', weight: 1 },
       { word: 'スポーツ', weight: 1 }, { word: 'リラックス', weight: 1 },
       { word: '休み', weight: 1 }, { word: '娯楽', weight: 1 },
+    ],
+    fallbackKeywords: [
+      { word: '何もしたくない', weight: 1 }, { word: '楽しいことがない', weight: 1 },
+      { word: '暇すぎる', weight: 1 }, { word: 'つまらない', weight: 1 },
     ]
   }
 ];
@@ -214,11 +273,13 @@ function normalizeText(text) {
 }
 
 // ==== トライ木の構築(モジュール読み込み時に1回だけ実行) ====
-function buildKeywordTrie(categoryList) {
+// keywordsField には 'keywords' または 'fallbackKeywords' を渡す。
+function buildKeywordTrie(categoryList, keywordsField) {
   const root = { children: new Map(), matches: null };
 
   categoryList.forEach((category, categoryIndex) => {
-    category.keywords.forEach(({ word, weight }) => {
+    const list = category[keywordsField] || [];
+    list.forEach(({ word, weight }) => {
       if (!word) return;
       let node = root;
       for (const ch of word) {
@@ -237,35 +298,27 @@ function buildKeywordTrie(categoryList) {
   return root;
 }
 
-const KEYWORD_TRIE = buildKeywordTrie(categories);
+const PRIMARY_TRIE = buildKeywordTrie(categories, 'keywords');
+const FALLBACK_TRIE = buildKeywordTrie(categories, 'fallbackKeywords');
 
 /**
- * テキストを1回だけ走査し、全カテゴリのスコアを同時に計算する。
- *
- * 【最長一致(maximal munch)】
- * 各開始位置では、トライ木を辿れるだけ深く辿り、
- * 「一致した単語」のうち一番長いものだけを採用する(= lastMatchで上書きしていく)。
- * 例:「職場の人間関係」というテキストに対して、
- *   - 「職場」(career, weight1) は "職場の人間関係" の接頭辞に過ぎない
- *   - 「職場の人間関係」(human, weight4) が最長一致
- * なので、この開始位置では human の+4だけを採用し、career の+1は捨てる。
- * これにより、長い具体的なフレーズの一部でしかない短い単語による
- * 無関係カテゴリへの誤加点を防ぐ。
+ * テキストを1回だけ走査し、全カテゴリのスコアを同時に計算する(最長一致)。
+ * トライ木を差し替えられるようにして、主判定・フォールバック判定の両方で使い回す。
  */
-function computeCategoryScores(normalizedText) {
+function computeCategoryScores(trie, normalizedText) {
   const scores = new Array(categories.length).fill(0);
   const length = normalizedText.length;
 
   for (let start = 0; start < length; start++) {
-    let node = KEYWORD_TRIE;
+    let node = trie;
     let lastMatch = null; // この開始位置でこれまでに見つかった最長一致
 
     for (let i = start; i < length; i++) {
       const next = node.children.get(normalizedText[i]);
-      if (!next) break; // これ以上長い単語には一致しないので打ち切り
+      if (!next) break;
       node = next;
       if (node.matches) {
-        lastMatch = node.matches; // より長い一致が見つかるたびに上書き
+        lastMatch = node.matches;
       }
     }
 
@@ -279,30 +332,16 @@ function computeCategoryScores(normalizedText) {
   return scores;
 }
 
-// 全カテゴリのスコアを計算し、降順にソートして返す
-function scoreAllCategoriesByRules(text) {
-  const normalized = normalizeText(text);
-  const scores = computeCategoryScores(normalized);
+function rankCategories(trie, normalizedText) {
+  const scores = computeCategoryScores(trie, normalizedText);
   return categories
     .map((category, index) => ({ category, score: scores[index] }))
     .sort((a, b) => b.score - a.score);
 }
 
-/**
- * ルールベース分類。
- * 1位のカテゴリと僅差の2位がいる場合は、「複合カテゴリ」として
- * primary/secondary の両方を返す(secondary は該当なしなら null)。
- * 戻り値は primary カテゴリのプロパティ(key/label/monster)をそのまま持つので、
- * 既存コードが `result.key` のように使っても壊れない。
- */
-function classifyCategoryByRules(text) {
-  const ranked = scoreAllCategoriesByRules(text);
+// 1位・2位のスコアから、最終的なカテゴリ判定(複合カテゴリ判定込み)を組み立てる共通処理
+function pickResultFromRanked(ranked, tier) {
   const top = ranked[0];
-
-  if (!top || top.score < MIN_SCORE_THRESHOLD) {
-    return { ...UNKNOWN_CATEGORY, secondary: null, scores: ranked };
-  }
-
   const second = ranked[1];
   const isMulti =
     second &&
@@ -312,8 +351,36 @@ function classifyCategoryByRules(text) {
   return {
     ...top.category,
     secondary: isMulti ? second.category : null,
-    scores: ranked, // デバッグ・チューニング用に全カテゴリのスコアも持たせておく
+    scores: ranked,
+    tier, // 'primary' | 'fallback' のどちらで判定されたかを記録(デバッグ用)
   };
+}
+
+/**
+ * ルールベース分類(2段階)。
+ * 1. 主判定(keywords)でスコアを計算し、1点以上あればそれを採用する。
+ * 2. 主判定が0点(＝一致するキーワードなし)の場合のみ、
+ *    フォールバック判定(fallbackKeywords: 口語表現・感情語)を試す。
+ * 3. どちらも0点なら初めて unknown を返す。
+ *
+ * 戻り値は primary カテゴリのプロパティ(key/label/monster)をそのまま持つので、
+ * 既存コードが `result.key` のように使っても壊れない。
+ * 追加で `tier`('primary'|'fallback'|'unknown') と `scores` を持つ。
+ */
+function classifyCategoryByRules(text) {
+  const normalized = normalizeText(text);
+
+  const primaryRanked = rankCategories(PRIMARY_TRIE, normalized);
+  if (primaryRanked[0].score >= MIN_SCORE_THRESHOLD) {
+    return pickResultFromRanked(primaryRanked, 'primary');
+  }
+
+  const fallbackRanked = rankCategories(FALLBACK_TRIE, normalized);
+  if (fallbackRanked[0].score >= MIN_SCORE_THRESHOLD) {
+    return pickResultFromRanked(fallbackRanked, 'fallback');
+  }
+
+  return { ...UNKNOWN_CATEGORY, secondary: null, scores: primaryRanked, tier: 'unknown' };
 }
 
 function classifyCategory(text) {
