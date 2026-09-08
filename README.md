@@ -1,56 +1,76 @@
-# Metsu
+﻿# Metsu
 
-Aplikasi permainan untuk mengubah keluhan menjadi monster, lalu mengalahkannya dengan klik, sentuhan, keyboard, atau sensor ZIG SIM. Antarmuka tetap menggunakan bahasa Jepang.
+モヤモヤや悩みをモンスターに変え、倒すことで気持ちを切り替えるゲームです。クリック、タッチ、キーボード、ZIG SIM のセンサーによる攻撃に対応しています。画面の表示言語は日本語です。
 
-## Menjalankan
+## 起動方法
 
-Dari folder ini jalankan:
+プロジェクトのフォルダーで、次のコマンドを実行します。
 
 ```sh
 python -m http.server 5501 --bind 127.0.0.1
 ```
 
-Buka http://127.0.0.1:5501. Bisa juga memakai VS Code Live Server yang sudah dikonfigurasi pada port 5501. Input teks dan pertarungan tidak memerlukan mikrofon atau server sensor. Fitur suara memerlukan izin mikrofon, dukungan pengenalan suara browser, serta koneksi ke layanan eksternal yang digunakan kode awal. Untuk perangkat ZIG SIM, jalankan `server.py` dengan dependensi Python `websockets`; penerima UDP memakai port 50000 dan WebSocket memakai port 8765.
+ブラウザーで http://127.0.0.1:5501 を開きます。ポート 5501 に設定済みの VS Code Live Server も使用できます。
 
-## Tampilan game saat ini
+文字入力と画面上の操作によるバトルには、マイクやセンサー用サーバーは不要です。音声入力には、マイクの使用許可、ブラウザーの音声認識機能への対応、および既存コードで利用している外部サービスへの接続が必要です。
 
-- `index.html` menjadi lobby game: panel misi di kiri, pratinjau monster di tengah, konsol input dan tombol BATTLE START di kanan.
-- Logo kanji 滅 dan susunan font versi krem dipertahankan.
-- Nuansa gelap dengan neon cyan–ungu, grid perspektif, lingkaran pemanggilan, dan animasi monster yang mengikuti preferensi pengurangan gerakan.
-- Pratinjau monster mengikuti klasifikasi teks. Tiga kartu monster menyediakan contoh input. Panel panduan dan tautan panduan di lobby sudah dihapus.
-- Pertarungan memakai panel profil target, HP neon, tombol ATTACK, dan penghitung serangan aktual.
-- Desain responsif untuk halaman awal, pertarungan, dan hasil.
-- Pesan input kosong dan kegagalan tampil di formulir; tombol dikunci selama pemrosesan.
-- Pengaturan mikrofon opsional yang dapat dibuka, serta tombol menghentikan mikrofon.
-- Serangan melalui tombol native mendukung klik, sentuhan, Enter, dan Space.
-- Serangan setelah HP habis diabaikan agar perpindahan monster tidak terpicu berkali-kali.
-- Gambar SVG cadangan untuk monster default karena tiga file `nomal*.png` asli kosong. File PNG asli tetap disimpan.
+ZIG SIM を使用する場合は、Python の依存ライブラリ `websockets` を用意して `server.py` を実行します。UDP の受信ポートは 50000、WebSocket のポートは 8765 です。
 
-Palet dapat diubah melalui variabel di bagian atas `style.css`:
+## 現在のゲーム画面
 
-| Warna | Kode | Kegunaan |
+- `index.html` はゲームのロビーです。左にミッション、中央にモンスターのプレビュー、右に入力コンソールと「討伐開始」ボタンを配置しています。
+- クリーム色のデザインで使用していた漢字「滅」のロゴとフォント構成を引き継いでいます。
+- 暗い背景にシアンと紫のネオンを組み合わせ、遠近感のあるグリッド、召喚リング、モンスターのアニメーションを表示します。アニメーションは、端末の動きを減らす設定に対応しています。
+- 入力内容の分類結果に応じて、モンスターのプレビューが変わります。3枚のモンスターカードから入力例を選べます。ロビーの操作ガイドとあそびかたへのリンクは削除済みです。
+- バトル画面には、ターゲットのプロフィール、ネオン風のHPゲージ、攻撃ボタン、実際の攻撃回数を表示します。
+- ロビー、バトル、結果の各画面は、画面幅に合わせてレイアウトが変わります。
+- 入力が空の場合や処理に失敗した場合は、フォーム内にメッセージを表示します。処理中はボタンを無効にします。
+- マイク設定は必要に応じて開くことができ、マイクを停止するボタンも用意しています。
+- 標準のボタン要素による攻撃は、クリック、タッチ、Enter、Space に対応しています。
+- HPがゼロになった後の攻撃は無視し、次のモンスターへの切り替えが重複して実行されるのを防ぎます。
+- 元の `nomal*.png` 3ファイルが空のため、標準モンスターには代替のSVG画像を使用します。元のPNGファイルは保存したままです。
+
+配色は `style.css` の先頭にある変数で変更できます。
+
+| 色 | カラーコード | 用途 |
 | --- | --- | --- |
-| Biru malam | `#080b19` | Latar dunia game |
-| Biru gelap | `#0d1528` | Panel antarmuka |
-| Cyan neon | `#66e3fa` | HP, bingkai, dan petunjuk |
-| Ungu terang | `#b99aff` | Target dan aksen |
-| Mint | `#83edc0` | Status siap dan keberhasilan |
-| Putih lembut | `#eef2ff` | Teks utama |
+| ミッドナイトブルー | `#080b19` | ゲーム全体の背景 |
+| ダークブルー | `#0d1528` | 画面内のパネル |
+| ネオンシアン | `#66e3fa` | HPゲージ、枠線、案内表示 |
+| ライトパープル | `#b99aff` | ターゲット表示とアクセント |
+| ミント | `#83edc0` | 準備完了や成功の表示 |
+| ソフトホワイト | `#eef2ff` | 本文の文字 |
 
-## Backup sebelum perubahan
+## 変更前のバックアップ
 
-`backups/original-20260908-144801/` berisi salinan 51 file proyek awal, termasuk aset dan `.vscode/settings.json`. Folder internal `.git` tidak disalin. Backup tidak ikut diubah saat versi baru dikerjakan.
+`backups/original-20260908-144801/` には、画像素材と `.vscode/settings.json` を含む、初期プロジェクトの51ファイルを保存しています。Gitの内部フォルダー `.git` はコピーしていません。新しいバージョンを編集しても、このバックアップは変更しません。
 
-`backups/cream-design-20260908-150353/` menyimpan versi desain krem sebelum perubahan menjadi lobby game. Folder ini berisi halaman, skrip, stylesheet, aset, dokumentasi, dan tes pada saat backup. Folder `.git` serta backup lain tidak disalin ulang.
+`backups/cream-design-20260908-150353/` には、ゲームロビーに変更する前のクリーム色のデザインを保存しています。バックアップ時点のページ、スクリプト、スタイルシート、画像素材、ドキュメント、テストが含まれます。`.git` と他のバックアップフォルダーは重複してコピーしていません。
 
-Untuk melihat versi krem, buka http://127.0.0.1:5501/backups/cream-design-20260908-150353/index.html saat server lokal berjalan. Versi awal tersedia di http://127.0.0.1:5501/backups/original-20260908-144801/index.html. Untuk mengembalikan salah satu versi, salin isi folder backup yang dipilih ke folder proyek setelah menyimpan versi baru yang ingin dipertahankan. File tambahan versi baru boleh tetap ada; halaman lama tidak merujuknya.
+ローカルサーバーの起動中に、次のURLから以前のバージョンを確認できます。
 
-## Pemeriksaan
+- クリーム色のデザイン：http://127.0.0.1:5501/backups/cream-design-20260908-150353/index.html
+- 初期バージョン：http://127.0.0.1:5501/backups/original-20260908-144801/index.html
+
+以前のバージョンに戻す場合は、残しておきたい現在のバージョンを保存したうえで、選んだバックアップフォルダーの内容をプロジェクトのフォルダーにコピーしてください。新しいバージョンで追加したファイルは、古いページから参照されないため、そのまま残すことができます。
+
+## 検証
 
 ```sh
 node --test tests/ui-flow.test.cjs
 ```
 
-Delapan tes memakai simulasi DOM untuk menjalankan skrip asli: input kosong, klasifikasi input teks, gambar cadangan, pratinjau lobby, pemulihan setelah gagal, suara yang tidak didukung, HP/tombol serangan/penghitung/pergantian monster/replay, serta akses langsung tanpa data. Pemeriksaan struktur HTML juga mencakup ID unik, tautan, aset, viewport, sintaks CSS, dan respons HTTP lokal.
+8件のテストでは、DOMを模擬した環境で実際のスクリプトを実行し、次の動作を確認します。
 
-Pemeriksaan visual di browser serta pengujian mikrofon dan perangkat ZIG SIM belum dilakukan dalam sesi ini karena browser pengujian tidak terhubung dan perangkat tidak tersedia.
+- 空の入力に対する処理
+- 入力テキストの分類
+- 代替画像の選択
+- ロビーのプレビュー更新
+- 処理失敗後の復帰
+- 音声認識に対応していない環境での処理
+- HP、攻撃ボタン、攻撃回数、モンスターの切り替え、リプレイ
+- バトルデータがない状態での直接アクセス
+
+HTML構造の確認では、IDの重複、リンク、画像素材、ビューポート設定、CSS構文、ローカルHTTPレスポンスも確認しています。
+
+開発セッションでは、検証用ブラウザーが接続されておらず、実機も利用できなかったため、ブラウザー上での表示確認とマイク・ZIG SIM の実機テストは未実施です。
