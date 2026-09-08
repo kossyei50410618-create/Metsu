@@ -78,12 +78,12 @@ function connectZigSim() {
   zigSocket.onmessage = (event) => handleZigSimData(event.data);
   zigSocket.onerror = () => {
     const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'センサー未接続 · タップやキーボードで遊べます。';
+    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
   };
   zigSocket.onclose = () => {
     zigSocket = null;
     const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'センサー未接続 · タップやキーボードで遊べます。';
+    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
   };
 }
 

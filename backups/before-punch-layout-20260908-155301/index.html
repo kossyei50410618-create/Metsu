@@ -16,13 +16,13 @@
         <span class="connection-pill"><i aria-hidden="true"></i> TEXT MODE / READY</span>
     </header>
     <main class="shell game-main">
-        <div class="lobby-heading"><div><p class="eyebrow">STRESS BREAKER / METSU</p><h1>そのモヤモヤを、<span>討伐せよ。</span></h1></div><p>気持ちを言葉に。モンスターを召喚。<br>パンチングボールを叩いて、モヤモヤを撃破。</p></div>
+        <div class="lobby-heading"><div><p class="eyebrow">STRESS BREAKER / METSU</p><h1>そのモヤモヤを、<span>討伐せよ。</span></h1></div><p>気持ちを言葉に。モンスターを召喚。<br>あとは、思いっきりタップするだけ。</p></div>
         <div class="game-layout">
             <aside class="mission-column">
                 <section class="hud-panel mission-panel" aria-labelledby="mission-title">
                     <div class="panel-heading"><span class="panel-symbol" aria-hidden="true">⌖</span><h2 id="mission-title">ミッション</h2><span class="panel-code">01</span></div>
-                    <h3>今日のストレスを<br>撃破しよう。</h3><p class="muted">入力したモヤモヤが敵になる。<br>HPをゼロにして、気持ちをリセット。</p>
-                    <ol class="mission-steps"><li class="current"><span>01</span><div><strong>気持ちを入力</strong><small>文字でも、音声でもOK</small></div><b aria-hidden="true">◀</b></li><li><span>02</span><div><strong>モンスターとバトル</strong><small>パンチでHPを削ろう</small></div></li><li><span>03</span><div><strong>討伐完了</strong><small>ひと息ついて、次の一歩へ</small></div></li></ol>
+                    <p class="eyebrow panel-kicker">YOUR OBJECTIVE</p><h3>今日のストレスを<br>撃破しよう。</h3><p class="muted">入力したモヤモヤが敵になる。<br>HPをゼロにして、気持ちをリセット。</p>
+                    <ol class="mission-steps"><li class="current"><span>01</span><div><strong>気持ちを入力</strong><small>文字でも、音声でもOK</small></div><b aria-hidden="true">◀</b></li><li><span>02</span><div><strong>モンスターとバトル</strong><small>タップしてHPを削ろう</small></div></li><li><span>03</span><div><strong>討伐完了</strong><small>ひと息ついて、次の一歩へ</small></div></li></ol>
                     <div class="mission-bottom"><span>MISSION TYPE</span><strong>ストレス討伐</strong></div>
                 </section>
             </aside>
@@ -35,7 +35,7 @@
             </section>
             <section id="input-screen" class="hud-panel input-card" aria-labelledby="input-title">
                 <div class="panel-heading"><span class="panel-symbol" aria-hidden="true">▧</span><h2 id="input-title">召喚コンソール</h2><span class="panel-code">INPUT</span></div>
-                <div class="input-content"><label for="input-text">今、何にモヤモヤしてる？</label><p id="input-help" class="muted">ひとことでも大丈夫。日本語で入力しよう。</p><textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…" aria-describedby="input-help input-error"></textarea><div class="input-meta"><span>✎ ターゲットデータ</span><span id="character-count">0 文字</span></div>
+                <div class="input-content"><p class="eyebrow panel-kicker">READY TO RELEASE?</p><label for="input-text">今、何にモヤモヤしてる？</label><p id="input-help" class="muted">ひとことでも大丈夫。日本語で入力しよう。</p><textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…" aria-describedby="input-help input-error"></textarea><div class="input-meta"><span>✎ ターゲットデータ</span><span id="character-count">0 文字</span></div>
                 <p id="input-error" class="error-message" role="alert"></p>
                 <div id="input-actions"><button id="generate-btn" class="button primary" type="button"><span>討伐開始</span><span class="button-en">BATTLE START</span><span aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary" type="button">◉ 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
                 <p id="pipeline-stage" role="status" aria-live="polite"></p><p id="mic-status" class="mic-status" role="status">文字入力なら、マイクは不要です。</p>

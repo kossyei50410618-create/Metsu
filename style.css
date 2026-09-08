@@ -187,6 +187,12 @@ summary > span { color: var(--muted); font-size: 12px; margin-left: 8px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; }*, *::before, *::after { animation: none !important; transition: none !important; }.particle { display: none; }body { transform: none !important; } }
 
 /* Allow larger labels to wrap within the game panels. */
+.mission-panel > h3 { margin-top: 22px; }
+.input-content { padding-top: 22px; }
+.profile-content { padding: 22px 18px; }
+.profile-content > :last-child { margin-bottom: 0; }
+.command-content > .button + .button { margin-top: 16px; }
+.profile-content .eyebrow { font-size: 14px; letter-spacing: .5px; margin-bottom: 8px; }
 .panel-heading, .button, .mission-bottom, .site-footer { flex-wrap: wrap; }
 .panel-heading h2, .mission-steps li > div { min-width: 0; overflow-wrap: anywhere; }
 .monster-select { flex-wrap: wrap; }
