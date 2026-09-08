@@ -17,8 +17,32 @@ const monsters = {
 
 let monsterType = 'normal';
 let currentCategory = 'その他';
+
+// ==== 連戦キュー(secondaryカテゴリがあれば「主敵→副敵」の順で連戦する) ====
+let monsterQueue = [];      // [{ key, label, monster }, ...]
+let monsterQueueIndex = 0;
+
 const BATTLE_DATA_KEY = 'metsuBattleData';
 const SM_VOLUME_THRESHOLD = 0.2;
+
+// classifyCategoryWithVectors の戻り値(category)から、倒すべき敵の一覧を組み立てる。
+// secondary が無ければ1体だけの配列になる(今までと完全に同じ挙動)。
+function buildMonsterQueue(category) {
+  const queue = [{ key: category.key, label: category.label, monster: category.monster }];
+  if (category.secondary) {
+    queue.push({
+      key: category.secondary.key,
+      label: category.secondary.label,
+      monster: category.secondary.monster,
+    });
+  }
+  return queue;
+}
+
+// 次の敵がキューに残っているか
+function hasNextMonster() {
+  return monsterQueueIndex < monsterQueue.length - 1;
+}
 
 function getMonsterForm(volume) {
   if (typeof volume !== 'number' || volume <= 0) return 'normal';
@@ -42,23 +66,45 @@ async function generateMonster(analysisText = null) {
   const sourceText = analysisText || rawText || storedData?.analysisText || storedData?.rawText;
   if (!sourceText) return alert('内容を入力してください');
 
-  const category = storedData?.category && !analysisText && !rawText
-    ? storedData.category
-    : await classifyCategoryWithVectors(sourceText);
-  monsterType = category.monster;
-  currentCategory = category.label;
+  const isFirstEntry = !getElement('battle-screen');
 
-  if (!getElement('battle-screen')) {
+  let activeCategory;
+
+  if (isFirstEntry) {
+    // input-screen側: まだキューは無いので、新しく分類してキューを作る
+    const shouldReuseStoredCategory = storedData?.category && !analysisText && !rawText;
+    const classifiedCategory = shouldReuseStoredCategory ? storedData.category : await classifyCategoryWithVectors(sourceText);
+
+    monsterQueue = buildMonsterQueue(classifiedCategory);
+    monsterQueueIndex = 0;
+    activeCategory = monsterQueue[0];
+
     const monsterForm = getMonsterForm(micMaxVolume);
     saveBattleData({
       rawText: rawText || storedData?.rawText || sourceText,
       analysisText: analysisText || storedData?.analysisText || '',
-      category,
+      category: classifiedCategory, // 表示用に元の分類結果(label/secondary込み)も保持
+      queue: monsterQueue,
+      queueIndex: 0,
       monsterForm,
     });
     window.location.href = 'battle.html';
     return;
   }
+
+  // battle-screen側: 保存済みのキューを復元して1体目を描画する
+  monsterQueue = storedData?.queue?.length ? storedData.queue : buildMonsterQueue(storedData?.category || { key: 'unknown', label: 'その他', monster: 'normal' });
+  monsterQueueIndex = storedData?.queueIndex ?? 0;
+  activeCategory = monsterQueue[monsterQueueIndex];
+
+  const monsterForm = storedData?.monsterForm || (storedData?.isExForm ? 'ex' : getMonsterForm(micMaxVolume));
+  await renderMonster(activeCategory, monsterForm, storedData);
+}
+
+// 実際にモンスターをバトル画面に描画する処理(初回表示・連戦での再召喚の両方から呼ばれる)
+async function renderMonster(category, monsterForm, storedData) {
+  monsterType = category.monster;
+  currentCategory = category.label;
 
   const statusText = getElement('status-text');
   if (statusText) statusText.innerText = '分類中... ベクトルを使って判定しています';
@@ -69,7 +115,6 @@ async function generateMonster(analysisText = null) {
   const monsterEl = getElement('monster');
   const monsterImg = getElement('monster-img');
   const style = monsters[monsterType] || monsters.normal;
-  const monsterForm = storedData?.monsterForm || (storedData?.isExForm ? 'ex' : getMonsterForm(micMaxVolume));
   const isExForm = monsterForm === 'ex';
   const imageSrc = await generateMonsterImage(monsterType, monsterForm);
 
@@ -85,6 +130,7 @@ async function generateMonster(analysisText = null) {
   };
 
   const formLabel = monsterForm === 'ex' ? ' (EX)' : monsterForm === 'sm' ? ' (SM)' : '';
+  const queueLabel = monsterQueue.length > 1 ? ` [${monsterQueueIndex + 1}/${monsterQueue.length}]` : '';
   if (statusText) statusText.innerText = `画像読み込み中... ${currentCategory}${formLabel}`;
 
   try {
@@ -95,13 +141,27 @@ async function generateMonster(analysisText = null) {
   }
 
   getElement('attack-hint').innerText = '';
-  if (statusText) statusText.innerText = `ENTITY DETECTED: ${currentCategory}${formLabel}`;
-  getElement('display-text').innerText = storedData?.analysisText ? `解析: ${storedData.analysisText}` : `入力: ${sourceText}`;
-  getElement('category-label').innerText = `分類: ${currentCategory}`;
+  if (statusText) statusText.innerText = `ENTITY DETECTED: ${currentCategory}${formLabel}${queueLabel}`;
+  getElement('display-text').innerText = storedData?.analysisText ? `解析: ${storedData.analysisText}` : `入力: ${storedData?.rawText || ''}`;
+  getElement('category-label').innerText = `分類: ${currentCategory}${queueLabel}`;
   syncHpUi();
 
   setWeakSpot(monsterType);
   startZigAttackDetection();
+}
+
+// 1体倒した後、キューに次の敵がいれば呼ばれる(battle.js の destroyMonster から呼び出す)
+async function spawnNextMonster() {
+  if (!hasNextMonster()) return false;
+
+  monsterQueueIndex += 1;
+  const storedData = readBattleData();
+  saveBattleData({ ...storedData, queueIndex: monsterQueueIndex });
+
+  const nextCategory = monsterQueue[monsterQueueIndex];
+  const monsterForm = storedData?.monsterForm || 'normal';
+  await renderMonster(nextCategory, monsterForm, storedData);
+  return true;
 }
 
 function saveBattleData(data) {
