@@ -34,16 +34,18 @@ const categories = [
       { word: '恋人', weight: 1 }, { word: '相談', weight: 1 },
       { word: '嫉妬', weight: 1 }, { word: '陰口', weight: 1 },
       { word: '無視される', weight: 2 }, { word: 'ぼっち', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: '誰にも分かってもらえない', weight: 1 }, { word: '話を聞いてもらえない', weight: 1 },
-      { word: '距離を感じる', weight: 1 }, { word: '気まずい', weight: 1 },
-      { word: 'うざい', weight: 1 }, { word: 'めんどくさい人', weight: 1 },
-      { word: '嫌われ', weight: 1 }, { word: '合わない人', weight: 1 },
+      { word: '友ガチャ', weight: 2 }, { word: '既読無視', weight: 2 },
+      { word: '未読無視', weight: 2 }, { word: 'ネッ友', weight: 1 },
+      { word: 'リア友', weight: 1 }, { word: '距離感バグ', weight: 2 },
+      { word: '空気読めない', weight: 2 }, { word: '塩対応', weight: 1 },
+      { word: '仲間外れ', weight: 2 }, { word: 'ハブられる', weight: 2 },
+      { word: '気まずい', weight: 1 }, { word: 'コミュ障', weight: 2 },
+      { word: 'マウント取る', weight: 1 }, { word: '界隈', weight: 1 },
+      { word: '本音言えない', weight: 2 },
     ]
   },
   {
-    key: 'family', label: '家族・生活環境の悩み', monster: 'human',
+    key: 'family', label: '家族・生活環境の悩み', monster: 'family',
     keywords: [
       { word: '家庭環境', weight: 3 }, { word: '家族', weight: 2 },
       { word: '家庭', weight: 2 }, { word: '両親', weight: 2 },
@@ -60,11 +62,14 @@ const categories = [
       { word: '親子', weight: 1 }, { word: '義理', weight: 1 },
       { word: '兄弟', weight: 1 }, { word: '姉妹', weight: 1 },
       { word: '離婚', weight: 2 }, { word: '不仲', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: '実家', weight: 1 }, { word: '帰省', weight: 1 },
-      { word: '家にいたくない', weight: 1 }, { word: '家がしんどい', weight: 1 },
-      { word: '家族に言えない', weight: 1 },
+      { word: '親ガチャ', weight: 2 }, { word: '実家暮らし', weight: 1 },
+      { word: '家族仲', weight: 2 }, { word: '親子げんか', weight: 2 },
+      { word: '夫婦げんか', weight: 2 }, { word: 'ワンオペ', weight: 2 },
+      { word: '家事分担', weight: 2 }, { word: '育児疲れ', weight: 2 },
+      { word: '同居しんどい', weight: 2 }, { word: '家に帰りたくない', weight: 2 },
+      { word: '家庭内別居', weight: 2 }, { word: '反抗期', weight: 1 },
+      { word: 'きょうだい', weight: 1 }, { word: '家族に言えない', weight: 2 },
+      { word: '生活環境', weight: 1 },
     ]
   },
   {
@@ -84,11 +89,14 @@ const categories = [
       { word: '独立', weight: 1 }, { word: '起業', weight: 1 },
       { word: 'クビ', weight: 2 }, { word: '解雇', weight: 2 },
       { word: '面接', weight: 1 }, { word: '離職', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: '仕事に行きたくない', weight: 1 }, { word: '会社行きたくない', weight: 1 },
-      { word: '働きたくない', weight: 1 }, { word: '月曜日が憂鬱', weight: 1 },
-      { word: '会社を辞めたい', weight: 1 }, { word: 'ノルマ', weight: 1 },
+      { word: '社畜', weight: 2 }, { word: '会社行きたくない', weight: 2 },
+      { word: '働きたくない', weight: 1 }, { word: 'サビ残', weight: 2 },
+      { word: '給料上がらない', weight: 2 }, { word: '評価されない', weight: 2 },
+      { word: '職場ガチャ', weight: 2 }, { word: 'キャリア迷子', weight: 2 },
+      { word: 'リモートワーク', weight: 1 }, { word: 'テレワーク', weight: 1 },
+      { word: '人手不足', weight: 1 }, { word: '仕事できない', weight: 1 },
+      { word: '無職', weight: 1 }, { word: 'フリーター', weight: 1 },
+      { word: '退職したい', weight: 2 },
     ]
   },
   {
@@ -106,11 +114,14 @@ const categories = [
       { word: '税金', weight: 1 }, { word: '保険料', weight: 1 },
       { word: '物価', weight: 1 }, { word: '副収入', weight: 1 },
       { word: '奨学金', weight: 2 }, { word: '養育費', weight: 2 },
-    ],
-    fallbackKeywords: [
-      { word: 'お金がない', weight: 1 }, { word: '金欠', weight: 1 },
-      { word: '生活が苦しい', weight: 1 }, { word: 'お金の余裕がない', weight: 1 },
-      { word: '節約できない', weight: 1 }, { word: '買えない', weight: 1 },
+      { word: '金欠', weight: 2 }, { word: 'カツカツ', weight: 2 },
+      { word: 'お金ない', weight: 2 }, { word: '貯金ゼロ', weight: 2 },
+      { word: '散財', weight: 1 }, { word: '浪費癖', weight: 1 },
+      { word: '課金', weight: 1 }, { word: 'リボ払い', weight: 2 },
+      { word: 'キャッシング', weight: 2 }, { word: '家計簿', weight: 1 },
+      { word: '給料安い', weight: 2 }, { word: '値上げ', weight: 1 },
+      { word: '財布ピンチ', weight: 2 }, { word: 'サブスク貧乏', weight: 2 },
+      { word: '物価高', weight: 2 },
     ]
   },
   {
@@ -128,12 +139,14 @@ const categories = [
       { word: '腰痛', weight: 1 }, { word: '通院', weight: 1 },
       { word: '薬', weight: 1 }, { word: 'パニック', weight: 2 },
       { word: '過労', weight: 2 }, { word: '倦怠感', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: 'しんどい', weight: 1 }, { word: 'つらい', weight: 1 },
-      { word: 'だるい', weight: 1 }, { word: '眠れない', weight: 1 },
-      { word: '食欲がない', weight: 1 }, { word: '気分が沈む', weight: 1 },
-      { word: '限界', weight: 1 },
+      { word: 'メンタルやばい', weight: 2 }, { word: '病み', weight: 2 },
+      { word: 'しんどい', weight: 1 }, { word: '限界', weight: 2 },
+      { word: '寝不足', weight: 1 }, { word: '五月病', weight: 2 },
+      { word: '燃え尽き症候群', weight: 2 }, { word: '自律神経', weight: 2 },
+      { word: '食欲不振', weight: 2 }, { word: 'だるい', weight: 1 },
+      { word: '気分が落ちる', weight: 2 }, { word: '病み期', weight: 2 },
+      { word: '疲労困憊', weight: 2 }, { word: '眠れない', weight: 2 },
+      { word: '心が折れる', weight: 2 },
     ]
   },
   {
@@ -148,11 +161,14 @@ const categories = [
       { word: '方向性', weight: 1 }, { word: '将来像', weight: 1 },
       { word: '自己成長', weight: 1 }, { word: '自己肯定感', weight: 2 },
       { word: '虚無感', weight: 2 }, { word: '燃え尽き', weight: 2 },
-    ],
-    fallbackKeywords: [
-      { word: '何がしたいか分からない', weight: 1 }, { word: 'このままでいいのか', weight: 1 },
-      { word: '自信がない', weight: 1 }, { word: '空しい', weight: 1 },
-      { word: '虚しい', weight: 1 }, { word: '何のために生きて', weight: 1 },
+      { word: '人生迷子', weight: 2 }, { word: '自分探し', weight: 2 },
+      { word: '何者かになりたい', weight: 2 }, { word: '承認欲求', weight: 2 },
+      { word: '意識高い系', weight: 1 }, { word: '成長したい', weight: 1 },
+      { word: '夢がない', weight: 2 }, { word: '目標迷子', weight: 2 },
+      { word: '将来不安', weight: 2 }, { word: '生きる意味', weight: 2 },
+      { word: 'やりたいこと迷子', weight: 2 }, { word: 'ポジティブになれない', weight: 2 },
+      { word: '自己嫌悪', weight: 2 }, { word: '劣等感', weight: 2 },
+      { word: '他人と比べる', weight: 1 },
     ]
   },
   {
@@ -165,10 +181,14 @@ const categories = [
       { word: '予定', weight: 1 }, { word: 'スケジュール', weight: 1 },
       { word: '遅刻', weight: 1 }, { word: '忙しい', weight: 1 },
       { word: '余裕', weight: 1 }, { word: '時間配分', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: '時間が足りない', weight: 1 }, { word: '焦る', weight: 1 },
-      { word: 'ギリギリ', weight: 1 }, { word: '間に合わない', weight: 1 },
+      { word: '時間足りない', weight: 2 }, { word: '予定詰めすぎ', weight: 2 },
+      { word: 'バタバタ', weight: 1 }, { word: 'てんてこ舞い', weight: 2 },
+      { word: '朝起きられない', weight: 1 }, { word: '寝坊', weight: 1 },
+      { word: '遅刻しそう', weight: 1 }, { word: '締切ギリギリ', weight: 2 },
+      { word: '後回し癖', weight: 2 }, { word: 'ダラダラ', weight: 1 },
+      { word: 'タイパ重視', weight: 1 }, { word: '時間泥棒', weight: 2 },
+      { word: '暇がない', weight: 1 }, { word: '予定パンパン', weight: 2 },
+      { word: '忙しすぎ', weight: 2 },
     ]
   },
   {
@@ -183,10 +203,14 @@ const categories = [
       { word: '機器', weight: 1 }, { word: 'オンライン', weight: 1 },
       { word: 'セキュリティ', weight: 1 }, { word: 'パスワード', weight: 1 },
       { word: '依存', weight: 1 }, { word: '炎上', weight: 2 },
-    ],
-    fallbackKeywords: [
-      { word: 'スマホが手放せない', weight: 1 }, { word: 'つい見てしまう', weight: 1 },
-      { word: '既読無視', weight: 1 }, { word: 'バズ', weight: 1 },
+      { word: 'SNS見る', weight: 1 }, { word: 'バズりたい', weight: 1 },
+      { word: '既読通知', weight: 1 }, { word: 'Wi-Fi弱い', weight: 2 },
+      { word: '通信制限', weight: 2 }, { word: 'パスワード忘れ', weight: 2 },
+      { word: 'アカウント乗っ取り', weight: 2 }, { word: 'ログインできない', weight: 2 },
+      { word: 'ググる', weight: 1 }, { word: 'ポチる', weight: 1 },
+      { word: 'デジタルデトックス', weight: 2 }, { word: 'ネット民', weight: 1 },
+      { word: 'ソシャゲ', weight: 1 }, { word: '通知地獄', weight: 2 },
+      { word: 'スマホ見すぎ', weight: 2 },
     ]
   },
   {
@@ -202,10 +226,14 @@ const categories = [
       { word: '進級', weight: 1 }, { word: '留年', weight: 1 },
       { word: '論文', weight: 1 }, { word: '卒論', weight: 1 },
       { word: '単位', weight: 1 }, { word: '偏差値', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: '勉強したくない', weight: 1 }, { word: '集中できない', weight: 1 },
-      { word: '頭に入らない', weight: 1 }, { word: '成績が上がらない', weight: 1 },
+      { word: '勉強垢', weight: 1 }, { word: 'ガチ勉', weight: 1 },
+      { word: '赤点', weight: 2 }, { word: '単位落とす', weight: 2 },
+      { word: 'ノー勉', weight: 2 }, { word: '一夜漬け', weight: 2 },
+      { word: '暗記できない', weight: 2 }, { word: '集中できない', weight: 2 },
+      { word: '受験生', weight: 1 }, { word: '浪人', weight: 1 },
+      { word: '学校行きたくない', weight: 2 }, { word: '課題終わらない', weight: 2 },
+      { word: 'テスト前', weight: 1 }, { word: '成績不振', weight: 2 },
+      { word: '勉強つらい', weight: 2 },
     ]
   },
   {
@@ -218,10 +246,14 @@ const categories = [
       { word: 'ありえる', weight: 1 }, { word: 'パーセント', weight: 1 },
       { word: '予測', weight: 1 }, { word: '賭け', weight: 1 },
       { word: 'リスク', weight: 1 }, { word: '運', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: 'うまくいくか不安', weight: 1 }, { word: '先が読めない', weight: 1 },
-      { word: 'どうなるか分からない', weight: 1 },
+      { word: 'ワンチャン', weight: 2 }, { word: 'ガチャ運', weight: 2 },
+      { word: '運ゲー', weight: 2 }, { word: '当たるか不安', weight: 2 },
+      { word: '五分五分', weight: 1 }, { word: '未知数', weight: 1 },
+      { word: '先行き不透明', weight: 2 }, { word: '神頼み', weight: 1 },
+      { word: '一か八か', weight: 2 }, { word: '賭けに出る', weight: 2 },
+      { word: '可能性低い', weight: 2 }, { word: '確率低い', weight: 2 },
+      { word: '読めない', weight: 1 }, { word: 'どうなるかわからない', weight: 2 },
+      { word: '結果待ち', weight: 1 },
     ]
   },
   {
@@ -235,14 +267,18 @@ const categories = [
       { word: '毎日', weight: 1 }, { word: '日常', weight: 1 },
       { word: 'クセ', weight: 1 }, { word: '飲酒', weight: 1 },
       { word: '喫煙', weight: 1 }, { word: '暴飲暴食', weight: 2 },
-    ],
-    fallbackKeywords: [
-      { word: 'また同じことをしてしまう', weight: 1 }, { word: '自己嫌悪', weight: 1 },
-      { word: '三日で挫折', weight: 1 }, { word: 'ついやってしまう', weight: 1 },
+      { word: 'ズボラ', weight: 1 }, { word: '先延ばし癖', weight: 2 },
+      { word: '自堕落', weight: 1 }, { word: 'だらしない', weight: 1 },
+      { word: '朝活', weight: 1 }, { word: '筋トレ習慣', weight: 1 },
+      { word: '禁煙', weight: 1 }, { word: '断捨離', weight: 1 },
+      { word: 'スマホいじり', weight: 1 }, { word: '夜更かし癖', weight: 2 },
+      { word: '継続できない', weight: 2 }, { word: 'サボり癖', weight: 2 },
+      { word: '悪習慣', weight: 2 }, { word: '生活リズム崩壊', weight: 2 },
+      { word: 'めんどくさがり', weight: 1 },
     ]
   },
   {
-    key: 'leisure', label: '趣味・余暇の悩み', monster: 'normal',
+    key: 'leisure', label: '趣味・余暇の悩み', monster: 'hobby',
     keywords: [
       { word: '趣味', weight: 1 }, { word: '遊び', weight: 1 },
       { word: '旅行', weight: 1 }, { word: '休日', weight: 1 },
@@ -251,10 +287,14 @@ const categories = [
       { word: 'アウトドア', weight: 1 }, { word: '散歩', weight: 1 },
       { word: 'スポーツ', weight: 1 }, { word: 'リラックス', weight: 1 },
       { word: '休み', weight: 1 }, { word: '娯楽', weight: 1 },
-    ],
-    fallbackKeywords: [
-      { word: '何もしたくない', weight: 1 }, { word: '楽しいことがない', weight: 1 },
-      { word: '暇すぎる', weight: 1 }, { word: 'つまらない', weight: 1 },
+      { word: '推し活', weight: 2 }, { word: 'オタ活', weight: 2 },
+      { word: '沼る', weight: 1 }, { word: '趣味活', weight: 1 },
+      { word: '聖地巡礼', weight: 2 }, { word: 'イベント遠征', weight: 2 },
+      { word: '暇つぶし', weight: 1 }, { word: '休日難民', weight: 2 },
+      { word: '遊びたい', weight: 1 }, { word: '旅行ロス', weight: 2 },
+      { word: 'ゲーム三昧', weight: 2 }, { word: '映画鑑賞', weight: 1 },
+      { word: 'カラオケ', weight: 1 }, { word: 'キャンプ', weight: 1 },
+      { word: 'チルする', weight: 1 },
     ]
   }
 ];

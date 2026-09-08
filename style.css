@@ -102,7 +102,8 @@ button:hover {
 }
 
 .mic-meter-controls,
-.mic-meter-display {
+.mic-meter-display,
+.mic-tone-display {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -224,4 +225,20 @@ button:hover {
     font-size: 1.2rem;
     color: #fff;
     margin: 10px 0;
+}
+
+.mic-tone-display {
+    margin-top: 10px;
+    color: #d7e7ff;
+}
+
+#mic-tone-frequency,
+#mic-tone-label {
+    min-width: 5rem;
+    color: #ffd700;
+    font-family: 'Orbitron', sans-serif;
+}
+
+#mic-tone-label {
+    color: var(--accent-cyan);
 }
