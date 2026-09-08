@@ -111,6 +111,9 @@ function syncHpUi() {
   const percent = (safeHp / safeMaxHp) * 100;
   hpFill.style.width = `${percent}%`;
   hpValue.innerText = `HP: ${safeHp}`;
+  if (typeof updateMonsterImageForHealth === 'function') {
+    updateMonsterImageForHealth(safeHp, safeMaxHp);
+  }
 }
 
 function showAttackFeedback(message) {
