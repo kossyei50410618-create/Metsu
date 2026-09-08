@@ -191,7 +191,7 @@ function showReplayScreen() {
   window.location.href = 'result.html';
 }
 
-// 1体倒した後、キューに次の敵(secondaryカテゴリ)がいれば連戦、いなければ結果画面へ。
+// 1体倒した後、キュー　に次の敵(secondaryカテゴリ)がいれば連戦、いなければ結果画面へ。
 // hasNextMonster / spawnNextMonster は monster.js 側で定義されている。
 function destroyMonster() {
   stopZigAttackDetection();
