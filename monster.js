@@ -17,6 +17,8 @@ const monsters = {
 
 let monsterType = 'normal';
 let currentCategory = 'その他';
+let currentMonsterForm = 'normal';
+let currentMonsterHealthStage = '';
 
 // ==== 連戦キュー(secondaryカテゴリがあれば「主敵→副敵」の順で連戦する) ====
 let monsterQueue = [];      // [{ key, label, monster }, ...]
@@ -51,13 +53,36 @@ function getMonsterForm(volume) {
   return 'normal';
 }
 
-async function generateMonsterImage(typeName, form = 'normal') {
+function getMonsterHealthStage(currentHp, maximumHp) {
+  if (maximumHp <= 0) return '';
+  const healthPercent = (currentHp / maximumHp) * 100;
+  if (healthPercent < 25) return 25;
+  if (healthPercent < 50) return 50;
+  return '';
+}
+
+async function generateMonsterImage(typeName, form = 'normal', healthStage = '') {
   const resolvedType = typeName || monsterType;
   const baseType = resolvedType || 'normal';
-  if (baseType === 'normal' || !monsters[baseType]) return 'assets/monster-fallback.svg';
-  const sprite = monsters[baseType].sprite;
-  if (form === 'normal') return sprite;
-  return sprite.replace(/\.png$/, `_${form}.png`);
+  const sprite = monsters[baseType]?.sprite || monsters.normal.sprite;
+  const healthSuffix = healthStage ? `${healthStage}` : '';
+  const formSuffix = form === 'normal' ? '' : `_${form}`;
+  return sprite.replace(/\.png$/, `${healthSuffix}${formSuffix}.png`);
+}
+
+function updateMonsterImageForHealth(currentHp, maximumHp) {
+  const healthStage = getMonsterHealthStage(currentHp, maximumHp);
+  if (healthStage === currentMonsterHealthStage) return;
+
+  currentMonsterHealthStage = healthStage;
+  const monsterImg = getElement('monster-img');
+  if (!monsterImg) return;
+
+  generateMonsterImage(monsterType, currentMonsterForm, healthStage).then((imageSrc) => {
+    if (healthStage === currentMonsterHealthStage) {
+      monsterImg.src = imageSrc;
+    }
+  });
 }
 
 async function generateMonster(analysisText = null) {
@@ -111,6 +136,8 @@ async function generateMonster(analysisText = null) {
 async function renderMonster(category, monsterForm, storedData) {
   monsterType = category.monster;
   currentCategory = category.label;
+  currentMonsterForm = monsterForm;
+  currentMonsterHealthStage = '';
 
   const statusText = getElement('status-text');
   if (statusText) statusText.innerText = 'モンスターを準備しています…';
@@ -122,7 +149,7 @@ async function renderMonster(category, monsterForm, storedData) {
   const monsterImg = getElement('monster-img');
   const style = monsters[monsterType] || monsters.normal;
   const isExForm = monsterForm === 'ex';
-  const imageSrc = await generateMonsterImage(monsterType, monsterForm);
+  const imageSrc = await generateMonsterImage(monsterType, monsterForm, currentMonsterHealthStage);
 
   monsterEl.style.background = style.color;
   monsterEl.style.boxShadow = `0 12px ${isExForm ? 35 : 24}px ${style.shadow}35`;
@@ -141,7 +168,7 @@ async function renderMonster(category, monsterForm, storedData) {
   if (statusText) statusText.innerText = `画像読み込み中... ${currentCategory}${formLabel}`;
 
   try {
-    monsterImg.src = await generateMonsterImage(monsterType, monsterForm);
+    monsterImg.src = await generateMonsterImage(monsterType, monsterForm, currentMonsterHealthStage);
   } catch (err) {
     console.error("画像読み込み失敗。デフォルト画像に切り替えます:", err);
     monsterImg.src = imageSrc;
