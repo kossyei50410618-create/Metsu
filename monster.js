@@ -50,11 +50,16 @@ async function generateMonster(analysisText = null) {
 
   if (!getElement('battle-screen')) {
     const monsterForm = getMonsterForm(micMaxVolume);
+    // 討伐結果画面で使うため、音量の最大値と声のトーンの平均もここで確定させて引き継ぐ
+    const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
     saveBattleData({
       rawText: rawText || storedData?.rawText || sourceText,
       analysisText: analysisText || storedData?.analysisText || '',
       category,
       monsterForm,
+      micMaxVolume: micStats?.maxVolume ?? micMaxVolume,
+      micAvgTone: micStats?.avgTone ?? null,
+      micAvgToneLabel: micStats?.avgToneLabel ?? '不明',
     });
     window.location.href = 'battle.html';
     return;
@@ -101,6 +106,13 @@ async function generateMonster(analysisText = null) {
   syncHpUi();
 
   setWeakSpot(monsterType);
+
+  // 討伐タイム計測と攻撃統計をここでリセットしてから戦闘を開始する
+  battleStartTime = Date.now();
+  attackCount = 0;
+  totalDamageDealt = 0;
+  maxSingleDamage = 0;
+
   startZigAttackDetection();
 }
 

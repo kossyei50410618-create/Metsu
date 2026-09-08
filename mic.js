@@ -15,6 +15,7 @@ let micMeterRunning = false;
 let micMeterInitialized = false;
 let micSensitivity = 1.5;
 let micVolumeHistory = [];
+let micToneHistory = [];
 let micMaxVolume = 0;
 let micNoiseFloor = 0.002;
 let micCalibrating = false;
@@ -93,6 +94,9 @@ function updateMicMeter() {
         if (micVolumeHistory.length > EX_VOLUME_HISTORY_LENGTH) {
             micVolumeHistory.shift();
         }
+        if (micToneFrequency !== null) {
+            micToneHistory.push(micToneFrequency);
+        }
     }
 
     meterFill.style.width = `${micVolume * 100}%`;
@@ -113,12 +117,26 @@ window.getMicData = function () {
 
 window.startMicVolumeCollection = function () {
     micVolumeHistory = [];
+    micToneHistory = [];
     micMaxVolume = 0;
     micVolumeCollectionActive = true;
 };
 
 window.stopMicVolumeCollection = function () {
     micVolumeCollectionActive = false;
+};
+
+// 音量の最大値・トーンの平均など、収録セッション全体の集計値をまとめて返す
+window.getMicSessionStats = function () {
+    const avgTone = micToneHistory.length > 0
+        ? micToneHistory.reduce((sum, f) => sum + f, 0) / micToneHistory.length
+        : null;
+    return {
+        maxVolume: micMaxVolume,
+        avgTone,
+        avgToneLabel: avgTone === null ? '不明' : getMicToneLabel(avgTone),
+        toneSampleCount: micToneHistory.length,
+    };
 };
 
 async function calibrateMic() {

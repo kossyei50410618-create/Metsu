@@ -4,6 +4,14 @@ let maxHp = 100;
 let lastAttackTime = 0;
 let weakSpot = null;
 
+// 討伐結果画面（result.html）で使う統計値
+let battleStartTime = null;
+let attackCount = 0;
+let totalDamageDealt = 0;
+let maxSingleDamage = 0;
+
+const RESULT_DATA_KEY = 'metsuResultData';
+
 const ZIG_WS_PORT = 8765;
 const ZIG_ACCEL_ATTACK_THRESHOLD = 0.45;
 const ZIG_ATTACK_COOLDOWN_MS = 5000;
@@ -146,6 +154,9 @@ function attackMonster(eventOrPower) {
   if (damage > 0) {
     hp -= damage;
     if (hp < 0) hp = 0;
+    attackCount += 1;
+    totalDamageDealt += damage;
+    if (damage > maxSingleDamage) maxSingleDamage = damage;
   }
 
   syncHpUi();
@@ -186,12 +197,41 @@ function createParticles() {
   }
 }
 
+// 討伐にかかった時間や攻撃統計、音量・トーンの記録をまとめてresult.html用に保存する
+function finalizeBattleResult() {
+  const elapsedMs = battleStartTime ? Date.now() - battleStartTime : 0;
+  const storedData = readBattleData() || {};
+  const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
+
+  const resultData = {
+    category: currentCategory,
+    monsterType,
+    monsterForm: storedData.monsterForm || 'normal',
+    rawText: storedData.rawText || '',
+    analysisText: storedData.analysisText || '',
+    elapsedMs,
+    attackCount,
+    totalDamageDealt,
+    maxSingleDamage,
+    maxHp,
+    maxVolume: storedData.micMaxVolume ?? micStats?.maxVolume ?? 0,
+    avgTone: storedData.micAvgTone ?? micStats?.avgTone ?? null,
+    avgToneLabel: storedData.micAvgToneLabel ?? micStats?.avgToneLabel ?? '不明',
+  };
+
+  try {
+    sessionStorage.setItem(RESULT_DATA_KEY, JSON.stringify(resultData));
+  } catch (err) {
+    console.warn('討伐結果の保存に失敗しました:', err);
+  }
+}
+
 function showReplayScreen() {
   stopZigAttackDetection();
   window.location.href = 'result.html';
 }
 
 function destroyMonster() {
+  finalizeBattleResult();
   showReplayScreen();
 }
-

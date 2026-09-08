@@ -210,6 +210,9 @@ button:hover {
     color: var(--accent-cyan);
     font-family: 'Orbitron', sans-serif;
     font-size: 2rem;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .particle {
@@ -241,4 +244,71 @@ button:hover {
 
 #mic-tone-label {
     color: var(--accent-cyan);
+}
+
+/* --- 討伐結果画面 --- */
+
+#result-rank-badge {
+    font-size: 1.1rem;
+    color: #ffd700;
+    letter-spacing: 3px;
+    margin: 0;
+}
+
+#result-rank {
+    font-size: 2.4rem;
+    color: var(--accent-red);
+    text-shadow: 0 0 12px var(--accent-red);
+}
+
+#reset-overlay #reset-msg {
+    font-size: 1.6rem;
+    text-align: center;
+    margin: 8px 0 20px;
+}
+
+#result-details {
+    width: min(640px, 92vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.result-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 20px;
+    background: var(--panel-color);
+    border: 2px solid var(--accent-cyan);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 0 15px rgba(100, 255, 218, 0.2);
+    box-sizing: border-box;
+}
+
+.result-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.result-label {
+    font-size: 0.8rem;
+    color: #8ea6d1;
+    letter-spacing: 1px;
+    font-family: 'Orbitron', sans-serif;
+    text-align: left;
+}
+
+.result-value {
+    font-size: 1.3rem;
+    color: var(--accent-cyan);
+    font-family: 'Orbitron', sans-serif;
+}
+
+#result-source-text {
+    text-align: center;
+    max-width: 100%;
+    word-break: break-word;
 }

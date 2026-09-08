@@ -8,9 +8,52 @@
 </head>
 <body>
     <div id="reset-overlay">
+        <p id="result-rank-badge">RANK <span id="result-rank">-</span></p>
         <p id="reset-msg">討伐完了！</p>
-        <button id="replay-btn" style="margin-top: 20px;">REPLAY</button>
+
+        <div id="result-details">
+            <div class="result-grid">
+                <div class="result-stat">
+                    <span class="result-label">討伐時間</span>
+                    <span class="result-value" id="result-time">--.--秒</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">音量 最大値</span>
+                    <span class="result-value" id="result-max-volume">--%</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">声のトーン 平均</span>
+                    <span class="result-value" id="result-avg-tone">測定なし</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">出現フォーム</span>
+                    <span class="result-value" id="result-form">通常</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">総攻撃回数</span>
+                    <span class="result-value" id="result-attack-count">0 回</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">与えた総ダメージ</span>
+                    <span class="result-value" id="result-total-damage">0</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">平均ダメージ/撃</span>
+                    <span class="result-value" id="result-avg-damage">0</span>
+                </div>
+                <div class="result-stat">
+                    <span class="result-label">会心の一撃</span>
+                    <span class="result-value" id="result-max-hit">0</span>
+                </div>
+            </div>
+
+            <p class="result-label" style="margin-top: 18px;">浄化されたモヤモヤ</p>
+            <p id="result-source-text" class="battle-message">（記録なし）</p>
+        </div>
+
+        <button id="replay-btn" style="margin-top: 24px;">REPLAY</button>
     </div>
     <script src="script.js"></script>
+    <script src="result.js"></script>
 </body>
 </html>
