@@ -4,6 +4,14 @@ let maxHp = 100;
 let lastAttackTime = 0;
 let weakSpot = null;
 
+// 討伐結果画面（result.html）で使う統計値
+let battleStartTime = null;
+let attackCount = 0;
+let totalDamageDealt = 0;
+let maxSingleDamage = 0;
+
+const RESULT_DATA_KEY = 'metsuResultData';
+
 const ZIG_WS_PORT = 8765;
 const ZIG_ACCEL_ATTACK_THRESHOLD = 0.45;
 const ZIG_ATTACK_COOLDOWN_MS = 5000;
@@ -77,9 +85,13 @@ function connectZigSim() {
   zigSocket.onmessage = (event) => handleZigSimData(event.data);
   zigSocket.onerror = () => {
     const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'ZIG SIM中継サーバーに接続できません（server.pyの起動を確認してください）';
+    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
   };
-  zigSocket.onclose = () => { zigSocket = null; };
+  zigSocket.onclose = () => {
+    zigSocket = null;
+    const hintEl = getElement('attack-hint');
+    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
+  };
 }
 
 function disconnectZigSim() {
@@ -110,7 +122,10 @@ function syncHpUi() {
   const safeHp = Math.max(0, Math.min(safeMaxHp, hp));
   const percent = (safeHp / safeMaxHp) * 100;
   hpFill.style.width = `${percent}%`;
-  hpValue.innerText = `HP: ${safeHp}`;
+  hpValue.innerText = `HP: ${safeHp} / ${safeMaxHp}`;
+  const hpBar = getElement('hp-bar');
+  hpBar.setAttribute('aria-valuemax', safeMaxHp);
+  hpBar.setAttribute('aria-valuenow', safeHp);
 }
 
 function showAttackFeedback(message) {
@@ -123,6 +138,7 @@ function showAttackFeedback(message) {
 }
 
 function attackMonster(eventOrPower) {
+  if (hp <= 0 || !zigAttackActive) return;
   const now = Date.now();
   const inputPower = typeof eventOrPower === 'number' ? eventOrPower : 1;
   let baseDamage = 0;
@@ -143,9 +159,16 @@ function attackMonster(eventOrPower) {
   }
 
   const damage = Math.round(baseDamage * inputPower);
+  attackCount += 1;
+  const counter = getElement('attack-count');
+  if (counter) counter.textContent = String(attackCount).padStart(2, '0');
+  feedback = `HIT! −${damage} HP`;
   if (damage > 0) {
     hp -= damage;
     if (hp < 0) hp = 0;
+    attackCount += 1;
+    totalDamageDealt += damage;
+    if (damage > maxSingleDamage) maxSingleDamage = damage;
   }
 
   syncHpUi();
@@ -186,6 +209,35 @@ function createParticles() {
   }
 }
 
+// 討伐にかかった時間や攻撃統計、音量・トーンの記録をまとめてresult.html用に保存する
+function finalizeBattleResult() {
+  const elapsedMs = battleStartTime ? Date.now() - battleStartTime : 0;
+  const storedData = readBattleData() || {};
+  const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
+
+  const resultData = {
+    category: currentCategory,
+    monsterType,
+    monsterForm: storedData.monsterForm || 'normal',
+    rawText: storedData.rawText || '',
+    analysisText: storedData.analysisText || '',
+    elapsedMs,
+    attackCount,
+    totalDamageDealt,
+    maxSingleDamage,
+    maxHp,
+    maxVolume: storedData.micMaxVolume ?? micStats?.maxVolume ?? 0,
+    avgTone: storedData.micAvgTone ?? micStats?.avgTone ?? null,
+    avgToneLabel: storedData.micAvgToneLabel ?? micStats?.avgToneLabel ?? '不明',
+  };
+
+  try {
+    sessionStorage.setItem(RESULT_DATA_KEY, JSON.stringify(resultData));
+  } catch (err) {
+    console.warn('討伐結果の保存に失敗しました:', err);
+  }
+}
+
 function showReplayScreen() {
   stopZigAttackDetection();
   window.location.href = 'result.html';
@@ -194,6 +246,7 @@ function showReplayScreen() {
 // 1体倒した後、キュー　に次の敵(secondaryカテゴリ)がいれば連戦、いなければ結果画面へ。
 // hasNextMonster / spawnNextMonster は monster.js 側で定義されている。
 function destroyMonster() {
+  finalizeBattleResult();
   stopZigAttackDetection();
 
   if (typeof hasNextMonster === 'function' && hasNextMonster()) {
