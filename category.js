@@ -399,7 +399,7 @@ function classifyCategory(text) {
   return classifyCategoryByRules(text);
 }
 
-// 互換性のために元の関数名を維持(monster.js等の呼び出し元を変更しなくて済むように)。
+// 互換性のために元の関数名を維持(monster.js 等の呼び出し元を変更しなくて済むように)。
 async function classifyCategoryWithVectors(text) {
   return classifyCategoryByRules(text);
 }
