@@ -64,23 +64,10 @@ function getMonsterHealthStage(currentHp, maximumHp) {
 async function generateMonsterImage(typeName, form = 'normal', healthStage = '') {
   const resolvedType = typeName || monsterType;
   const baseType = resolvedType || 'normal';
-  const sprite = monsters[baseType]?.sprite || monsters.normal.sprite;
-  const healthSuffix = healthStage ? `${healthStage}` : '';
-  const formSuffix = form === 'normal' ? '' : `_${form}`;
-  return sprite.replace(/\.png$/, `${healthSuffix}${formSuffix}.png`);
-}
-
-function updateMonsterImageForHealth(currentHp, maximumHp) {
-  const healthStage = getMonsterHealthStage(currentHp, maximumHp);
-  if (healthStage === currentMonsterHealthStage) return;
-
-  currentMonsterHealthStage = healthStage;
-  const monsterImg = getElement('monster-img');
-  if (!monsterImg) return;
-
-  generateMonsterImage(monsterType, currentMonsterForm, healthStage).then((imageSrc) => {
-    if (healthStage === currentMonsterHealthStage) monsterImg.src = imageSrc;
-  });
+  if (baseType === 'normal' || !monsters[baseType]) return 'assets/monster-fallback.svg';
+  const sprite = monsters[baseType].sprite;
+  if (form === 'normal') return sprite;
+  return sprite.replace(/\.png$/, `_${form}.png`);
 }
 
 async function generateMonster(analysisText = null) {
@@ -104,6 +91,8 @@ async function generateMonster(analysisText = null) {
     activeCategory = monsterQueue[0];
 
     const monsterForm = getMonsterForm(micMaxVolume);
+    // 討伐結果画面で使うため、音量の最大値と声のトーンの平均もここで確定させて引き継ぐ
+    const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
     saveBattleData({
       rawText: rawText || storedData?.rawText || sourceText,
       analysisText: analysisText || storedData?.analysisText || '',
@@ -111,6 +100,9 @@ async function generateMonster(analysisText = null) {
       queue: monsterQueue,
       queueIndex: 0,
       monsterForm,
+      micMaxVolume: micStats?.maxVolume ?? micMaxVolume,
+      micAvgTone: micStats?.avgTone ?? null,
+      micAvgToneLabel: micStats?.avgToneLabel ?? '不明',
     });
     window.location.href = 'battle.html';
     return;
@@ -133,7 +125,7 @@ async function renderMonster(category, monsterForm, storedData) {
   currentMonsterHealthStage = '';
 
   const statusText = getElement('status-text');
-  if (statusText) statusText.innerText = '分類中... ベクトルを使って判定しています';
+  if (statusText) statusText.innerText = 'モンスターを準備しています…';
 
   maxHp = Math.floor(Math.random() * 81) + 100;
   hp = maxHp;
@@ -145,14 +137,15 @@ async function renderMonster(category, monsterForm, storedData) {
   const imageSrc = await generateMonsterImage(monsterType, monsterForm, currentMonsterHealthStage);
 
   monsterEl.style.background = style.color;
-  monsterEl.style.boxShadow = `0 0 ${isExForm ? 70 : 50}px ${style.shadow}`;
+  monsterEl.style.boxShadow = `0 12px ${isExForm ? 35 : 24}px ${style.shadow}35`;
   monsterImg.removeAttribute('src');
   monsterImg.alt = '画像読み込み中...';
 
   monsterImg.onerror = () => {
     console.warn(`モンスター画像の読み込みに失敗しました: ${imageSrc}`);
-    monsterImg.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjU2IiBjeT0iMjU2IiByPSIyNTYiIGZpbGw9IiNkZGQiLz48dGV4dCB4PSIyNTYiIHk9IjI3NiIgc3R5bGU9ImZpbGw6I2NjYztmb250OiAzMHB4IEFyaWFsO3RleHQtYW5jaG9yOiBtaWRkbGU7IiBkeT0iLjM1ZW0iPlVQPC90ZXh0Pjwvc3ZnPg==';
-    monsterImg.alt = '画像読み込み失敗';
+    monsterImg.onerror = null;
+    monsterImg.src = 'assets/monster-fallback.svg';
+    monsterImg.alt = 'モヤモヤのモンスター';
   };
 
   const formLabel = monsterForm === 'ex' ? ' (EX)' : monsterForm === 'sm' ? ' (SM)' : '';
@@ -167,12 +160,20 @@ async function renderMonster(category, monsterForm, storedData) {
   }
 
   getElement('attack-hint').innerText = '';
-  if (statusText) statusText.innerText = `ENTITY DETECTED: ${currentCategory}${formLabel}${queueLabel}`;
+  if (statusText) statusText.innerText = `${currentCategory}のモンスター${formLabel}${queueLabel}`;
   getElement('display-text').innerText = storedData?.analysisText ? `解析: ${storedData.analysisText}` : `入力: ${storedData?.rawText || ''}`;
   getElement('category-label').innerText = `分類: ${currentCategory}${queueLabel}`;
+  monsterImg.alt = `${currentCategory}のモンスター`;
   syncHpUi();
 
   setWeakSpot(monsterType);
+
+  // 討伐タイム計測と攻撃統計をここでリセットしてから戦闘を開始する
+  battleStartTime = Date.now();
+  attackCount = 0;
+  totalDamageDealt = 0;
+  maxSingleDamage = 0;
+
   startZigAttackDetection();
 }
 

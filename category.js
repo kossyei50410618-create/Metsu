@@ -95,7 +95,7 @@ const categories = [
     keywords: [
       { word: '経済的な不安', weight: 3 }, { word: '生活費', weight: 2 },
       { word: '借金', weight: 2 }, { word: 'ローン', weight: 2 },
-      { word: '節約', weight: 1 }, { word: 'お金', weight: 1 },
+      { word: '節約', weight: 1 }, { word: 'お金', weight: 1 },{ word: 'おかね', weight: 1 },
       { word: '収入', weight: 1 }, { word: '貯金', weight: 1 },
       { word: '投資', weight: 1 }, { word: '家計', weight: 1 },
       { word: '支払い', weight: 1 }, { word: '支出', weight: 1 },
@@ -107,8 +107,8 @@ const categories = [
       { word: '奨学金', weight: 2 }, { word: '養育費', weight: 2 },
     ],
     fallbackKeywords: [
-      { word: 'お金がない', weight: 1 }, { word: '金欠', weight: 1 },
-      { word: '生活が苦しい', weight: 1 }, { word: 'お金の余裕がない', weight: 1 },
+      { word: 'お金がない', weight: 1 },{ word: 'おかねがない', weight: 1 }, { word: '金欠', weight: 1 },
+      { word: '生活が苦しい', weight: 1 }, { word: 'おかねの余裕がない', weight: 1 },{ word: 'お金の余裕がない', weight: 1 },
       { word: '節約できない', weight: 1 }, { word: '買えない', weight: 1 },
     ]
   },
@@ -232,7 +232,7 @@ const categories = [
       { word: 'ルーティン', weight: 1 }, { word: '続けられない', weight: 2 },
       { word: 'やめたい', weight: 1 }, { word: '改善', weight: 1 },
       { word: '毎日', weight: 1 }, { word: '日常', weight: 1 },
-      { word: 'クセ', weight: 1 }, { word: '飲酒', weight: 1 },
+      { word: 'クセ', weight: 1 }, { word: 'お酒', weight: 1 }, { word: '飲酒', weight: 1 },
       { word: '喫煙', weight: 1 }, { word: '暴飲暴食', weight: 2 },
     ],
     fallbackKeywords: [
