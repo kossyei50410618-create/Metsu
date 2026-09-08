@@ -126,6 +126,9 @@ function syncHpUi() {
   const hpBar = getElement('hp-bar');
   hpBar.setAttribute('aria-valuemax', safeMaxHp);
   hpBar.setAttribute('aria-valuenow', safeHp);
+  if (typeof updateMonsterImageForHealth === 'function') {
+    updateMonsterImageForHealth(safeHp, safeMaxHp);
+  }
 }
 
 function showAttackFeedback(message) {
