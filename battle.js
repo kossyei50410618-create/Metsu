@@ -91,6 +91,11 @@ function connectZigSim() {
     zigSocket = null;
     const hintEl = getElement('attack-hint');
     if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
+    if (zigAttackActive) {
+      setTimeout(() => {
+        if (zigAttackActive && !zigSocket) connectZigSim();
+      }, 1000);
+    }
   };
 }
 
@@ -141,7 +146,7 @@ function showAttackFeedback(message) {
 }
 
 function attackMonster(eventOrPower) {
-  if (hp <= 0 || !zigAttackActive) return;
+  if (hp <= 0) return;
   const now = Date.now();
   const inputPower = typeof eventOrPower === 'number' ? eventOrPower : 1;
   let baseDamage = 0;
