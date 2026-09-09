@@ -133,6 +133,13 @@ test('unsupported voice input leaves text entry available', async () => {
   assert.equal(a.elements.get('mic-calibrate-btn').disabled, true);
 });
 
+test('index page exposes the mic diagnostic panel at load time', () => {
+  const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.match(markup, /<details class="mic-settings" open>/);
+  assert.match(markup, /id="mic-tone-frequency"/);
+  assert.match(markup, /id="mic-intonation-value"/);
+});
+
 test('battle HP, repeated clicks, queue transition and replay work', async () => {
   const a = app('battle.html', {
     rawText: '勉強と仕事', category: { key: 'study', label: '勉強', monster: 'study' },
