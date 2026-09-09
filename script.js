@@ -87,6 +87,11 @@ async function analyzeSpeechText(transcript) {
   });
 }
 
+function normalizeSpeechTranscript(transcript) {
+  if (typeof transcript !== 'string') return '';
+  return transcript.replace(/\s+/g, '');
+}
+
 function isSpeechRecognitionSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
@@ -203,32 +208,33 @@ async function startRecognition() {
   try {
     window.startMicVolumeCollection();
     const transcript = await listen();
+    const normalizedTranscript = normalizeSpeechTranscript(transcript);
     window.stopMicVolumeCollection();
-    if (!transcript) {
+    if (!normalizedTranscript) {
       status.innerText = '音声入力がキャンセルされました。';
       updatePipelineStage('音声入力がキャンセルされました。');
       return;
     }
 
     stopMicMeter();
-    inputText.value = transcript;
+    inputText.value = normalizedTranscript;
     inputText.dispatchEvent(new Event('input', { bubbles: true }));
     updatePipelineStage('ステップ 2/4: テキスト解析を行っています');
     status.innerText = '認識完了。解析中...';
 
     let analysis = '';
     try {
-      analysis = await analyzeSpeechText(transcript);
-      status.innerText = `認識完了: ${transcript}`;
+      analysis = await analyzeSpeechText(normalizedTranscript);
+      status.innerText = `認識完了: ${normalizedTranscript}`;
     } catch (error) {
       console.warn('音声解析エラー:', error);
-      status.innerText = `認識完了: ${transcript}`;
+      status.innerText = `認識完了: ${normalizedTranscript}`;
     }
 
     updatePipelineStage('ステップ 3/4: モンスターを生成しています');
     status.innerText = '認識完了。少し待ってから出現します...';
     await sleep(1200);
-    await generateMonster(analysis || transcript);
+    await generateMonster(analysis || normalizedTranscript);
     updatePipelineStage('ステップ 4/4: モンスター討伐へ');
   } catch (error) {
     status.innerText = error.message || '音声認識中にエラーが発生しました。';

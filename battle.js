@@ -174,7 +174,6 @@ function attackMonster(eventOrPower) {
   if (damage > 0) {
     hp -= damage;
     if (hp < 0) hp = 0;
-    attackCount += 1;
     totalDamageDealt += damage;
     if (damage > maxSingleDamage) maxSingleDamage = damage;
   }

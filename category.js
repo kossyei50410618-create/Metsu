@@ -33,6 +33,9 @@ const categories = [
       { word: '恋人', weight: 1 }, { word: '相談', weight: 1 },
       { word: '嫉妬', weight: 1 }, { word: '陰口', weight: 1 },
       { word: '無視される', weight: 2 }, { word: 'ぼっち', weight: 1 },
+      { word: '空気読めない', weight: 1 }, { word: 'ウザい', weight: 1 },
+      { word: '気まずい', weight: 1 }, { word: 'しんどい', weight: 1 },
+      { word: '距離置かれる', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '誰にも分かってもらえない', weight: 1 }, { word: '話を聞いてもらえない', weight: 1 },
@@ -59,6 +62,9 @@ const categories = [
       { word: '親子', weight: 1 }, { word: '義理', weight: 1 },
       { word: '兄弟', weight: 1 }, { word: '姉妹', weight: 1 },
       { word: '離婚', weight: 2 }, { word: '不仲', weight: 1 },
+      { word: '家がキツい', weight: 1 }, { word: '親ガチャ', weight: 2 },
+      { word: '家族モヤモヤ', weight: 1 }, { word: '実家しんどい', weight: 1 },
+      { word: '空気が重い', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '実家', weight: 1 }, { word: '帰省', weight: 1 },
@@ -83,6 +89,9 @@ const categories = [
       { word: '独立', weight: 1 }, { word: '起業', weight: 1 },
       { word: 'クビ', weight: 2 }, { word: '解雇', weight: 2 },
       { word: '面接', weight: 1 }, { word: '離職', weight: 1 },
+      { word: '社畜', weight: 2 }, { word: 'ブラック', weight: 2 },
+      { word: 'しんどい職場', weight: 1 }, { word: '上司うざい', weight: 1 },
+      { word: '仕事キツい', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '仕事に行きたくない', weight: 1 }, { word: '会社行きたくない', weight: 1 },
@@ -105,6 +114,9 @@ const categories = [
       { word: '税金', weight: 1 }, { word: '保険料', weight: 1 },
       { word: '物価', weight: 1 }, { word: '副収入', weight: 1 },
       { word: '奨学金', weight: 2 }, { word: '養育費', weight: 2 },
+      { word: '金欠', weight: 1 }, { word: '生活ギリギリ', weight: 1 },
+      { word: 'お金苦しい', weight: 1 }, { word: '支払いキツい', weight: 1 },
+      { word: 'クレカ地獄', weight: 2 },
     ],
     fallbackKeywords: [
       { word: 'お金がない', weight: 1 },{ word: 'おかねがない', weight: 1 }, { word: '金欠', weight: 1 },
@@ -127,6 +139,9 @@ const categories = [
       { word: '腰痛', weight: 1 }, { word: '通院', weight: 1 },
       { word: '薬', weight: 1 }, { word: 'パニック', weight: 2 },
       { word: '過労', weight: 2 }, { word: '倦怠感', weight: 1 },
+      { word: 'メンタル限界', weight: 2 }, { word: 'ダルい', weight: 1 },
+      { word: '気分落ちる', weight: 1 }, { word: 'ヤバい', weight: 1 },
+      { word: 'しんどい', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '健康', weight: 1 }, { word: 'しんどい', weight: 1 }, { word: 'つらい', weight: 1 },
@@ -147,6 +162,9 @@ const categories = [
       { word: '方向性', weight: 1 }, { word: '将来像', weight: 1 },
       { word: '自己成長', weight: 1 }, { word: '自己肯定感', weight: 2 },
       { word: '虚無感', weight: 2 }, { word: '燃え尽き', weight: 2 },
+      { word: '何やりたいか分からん', weight: 1 }, { word: '人生迷子', weight: 1 },
+      { word: '自信ない', weight: 1 }, { word: '方向性見えない', weight: 1 },
+      { word: '自分探し', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '何がしたいか分からない', weight: 1 }, { word: 'このままでいいのか', weight: 1 },
@@ -164,6 +182,9 @@ const categories = [
       { word: '予定', weight: 1 }, { word: 'スケジュール', weight: 1 },
       { word: '遅刻', weight: 1 }, { word: '忙しい', weight: 1 },
       { word: '余裕', weight: 1 }, { word: '時間配分', weight: 1 },
+      { word: '時間足りない', weight: 1 }, { word: 'ギリギリ', weight: 1 },
+      { word: '焦る', weight: 1 }, { word: '詰まってる', weight: 1 },
+      { word: '先送り', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '時間が足りない', weight: 1 }, { word: '焦る', weight: 1 },
@@ -182,6 +203,9 @@ const categories = [
       { word: '機器', weight: 1 }, { word: 'オンライン', weight: 1 },
       { word: 'セキュリティ', weight: 1 }, { word: 'パスワード', weight: 1 },
       { word: '依存', weight: 1 }, { word: '炎上', weight: 2 },
+      { word: 'SNSしんどい', weight: 2 }, { word: '通知地獄', weight: 2 },
+      { word: '既読無視', weight: 1 }, { word: 'スマホ中毒', weight: 2 },
+      { word: 'LINEしんどい', weight: 1 },
     ],
     fallbackKeywords: [
       { word: 'スマホが手放せない', weight: 1 }, { word: 'つい見てしまう', weight: 1 },
@@ -201,6 +225,9 @@ const categories = [
       { word: '進級', weight: 1 }, { word: '留年', weight: 1 },
       { word: '論文', weight: 1 }, { word: '卒論', weight: 1 },
       { word: '単位', weight: 1 }, { word: '偏差値', weight: 1 },
+      { word: '勉強つらい', weight: 1 }, { word: 'テストヤバい', weight: 1 },
+      { word: '復習しんどい', weight: 1 }, { word: '単位ギリ', weight: 1 },
+      { word: '進級きつい', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '勉強したくない', weight: 1 }, { word: '集中できない', weight: 1 },
@@ -217,6 +244,9 @@ const categories = [
       { word: 'ありえる', weight: 1 }, { word: 'パーセント', weight: 1 },
       { word: '予測', weight: 1 }, { word: '賭け', weight: 1 },
       { word: 'リスク', weight: 1 }, { word: '運', weight: 1 },
+      { word: 'どうなるかわからん', weight: 1 }, { word: '当たるか怪しい', weight: 1 },
+      { word: 'ありうる', weight: 1 }, { word: '勝負弱い', weight: 1 },
+      { word: '行けるか怪しい', weight: 1 },
     ],
     fallbackKeywords: [
       { word: 'うまくいくか不安', weight: 1 }, { word: '先が読めない', weight: 1 },
@@ -234,6 +264,9 @@ const categories = [
       { word: '毎日', weight: 1 }, { word: '日常', weight: 1 },
       { word: 'クセ', weight: 1 }, { word: 'お酒', weight: 1 }, { word: '飲酒', weight: 1 },
       { word: '喫煙', weight: 1 }, { word: '暴飲暴食', weight: 2 },
+      { word: 'ついやる', weight: 1 }, { word: 'クセ強い', weight: 1 },
+      { word: 'またやっちゃう', weight: 1 }, { word: 'やめられない', weight: 1 },
+      { word: '生活崩れる', weight: 1 },
     ],
     fallbackKeywords: [
       { word: 'また同じことをしてしまう', weight: 1 }, { word: '自己嫌悪', weight: 1 },
@@ -250,6 +283,9 @@ const categories = [
       { word: 'アウトドア', weight: 1 }, { word: '散歩', weight: 1 },
       { word: 'スポーツ', weight: 1 }, { word: 'リラックス', weight: 1 },
       { word: '休み', weight: 1 }, { word: '娯楽', weight: 1 },
+      { word: '何もない', weight: 1 }, { word: '暇つぶし', weight: 1 },
+      { word: 'やることない', weight: 1 }, { word: '休日ダルい', weight: 1 },
+      { word: 'リフレッシュしたい', weight: 1 },
     ],
     fallbackKeywords: [
       { word: '何もしたくない', weight: 1 }, { word: '楽しいことがない', weight: 1 },

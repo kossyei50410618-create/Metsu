@@ -69,10 +69,6 @@ function renderResultScreen() {
   setText('result-form', formLabelOf(data.monsterForm));
   setText('result-rank', computeRank(data.elapsedMs, data.attackCount ?? 0));
 
-  const sourceTextEl = document.getElementById('result-source-text');
-  if (sourceTextEl) {
-    sourceTextEl.innerText = data.analysisText || data.rawText || '（記録なし）';
-  }
 }
 
 renderResultScreen();
