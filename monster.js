@@ -1,18 +1,18 @@
 // monster.js
 const monsters = {
-  human: { color: 'radial-gradient(circle, #d946ef 0%, #7c3aed 100%)', shadow: '#d946ef', sprite: 'assets/human.png' },
-  family: { color: 'radial-gradient(circle, #be123c 0%, #881337 100%)', shadow: '#fb7185', sprite: 'assets/family.png' },
-  career: { color: 'radial-gradient(circle, #0ea5e9 0%, #1d4ed8 100%)', shadow: '#0ea5e9', sprite: 'assets/career.png' },
-  money: { color: 'radial-gradient(circle, #4d7c0f 0%, #a3e635 100%)', shadow: '#a3e635', sprite: 'assets/money.png' },
-  health: { color: 'radial-gradient(circle, #16a34a 0%, #0f766e 100%)', shadow: '#16a34a', sprite: 'assets/health.png' },
-  self: { color: 'radial-gradient(circle, #ec4899 0%, #db2777 100%)', shadow: '#ec4899', sprite: 'assets/self.png' },
-  time: { color: 'radial-gradient(circle, #f97316 0%, #ea580c 100%)', shadow: '#f97316', sprite: 'assets/time.png' },
-  digital: { color: 'radial-gradient(circle, #0ea5e9 0%, #0284c7 100%)', shadow: '#0ea5e9', sprite: 'assets/digital.png' },
-  study: { color: 'radial-gradient(circle, #facc15 0%, #eab308 100%)', shadow: '#facc15', sprite: 'assets/study.png' },
-  probability: { color: 'radial-gradient(circle, #fde047 0%, #f59e0b 100%)', shadow: '#f59e0b', sprite: 'assets/probability.png' },
-  habit: { color: 'radial-gradient(circle, #64748b 0%, #334155 100%)', shadow: '#64748b', sprite: 'assets/habit.png' },
-  leisure: { color: 'radial-gradient(circle, #0f766e 0%, #115e59 100%)', shadow: '#2dd4bf', sprite: 'assets/leisure.png' },
-  normal: { color: 'radial-gradient(circle, #334155 0%, #0f172a 100%)', shadow: '#64748b', sprite: 'assets/nomal.png' }
+  human: { color: 'radial-gradient(circle, #d946ef 0%, #7c3aed 100%)', shadow: '#d946ef', backdrop: '#160a2b', sprite: 'assets/human.png' },
+  family: { color: 'radial-gradient(circle, #be123c 0%, #881337 100%)', shadow: '#fb7185', backdrop: '#280914', sprite: 'assets/family.png' },
+  career: { color: 'radial-gradient(circle, #0ea5e9 0%, #1d4ed8 100%)', shadow: '#0ea5e9', backdrop: '#071b38', sprite: 'assets/career.png' },
+  money: { color: 'radial-gradient(circle, #4d7c0f 0%, #a3e635 100%)', shadow: '#a3e635', backdrop: '#17230a', sprite: 'assets/money.png' },
+  health: { color: 'radial-gradient(circle, #16a34a 0%, #0f766e 100%)', shadow: '#16a34a', backdrop: '#06251f', sprite: 'assets/health.png' },
+  self: { color: 'radial-gradient(circle, #ec4899 0%, #db2777 100%)', shadow: '#ec4899', backdrop: '#2a0b23', sprite: 'assets/self.png' },
+  time: { color: 'radial-gradient(circle, #f97316 0%, #ea580c 100%)', shadow: '#f97316', backdrop: '#2b1005', sprite: 'assets/time.png' },
+  digital: { color: 'radial-gradient(circle, #0ea5e9 0%, #0284c7 100%)', shadow: '#0ea5e9', backdrop: '#061e32', sprite: 'assets/digital.png' },
+  study: { color: 'radial-gradient(circle, #facc15 0%, #eab308 100%)', shadow: '#facc15', backdrop: '#292304', sprite: 'assets/study.png' },
+  probability: { color: 'radial-gradient(circle, #fde047 0%, #f59e0b 100%)', shadow: '#f59e0b', backdrop: '#2c1904', sprite: 'assets/probability.png' },
+  habit: { color: 'radial-gradient(circle, #64748b 0%, #334155 100%)', shadow: '#64748b', backdrop: '#111c2a', sprite: 'assets/habit.png' },
+  leisure: { color: 'radial-gradient(circle, #0f766e 0%, #115e59 100%)', shadow: '#2dd4bf', backdrop: '#062622', sprite: 'assets/leisure.png' },
+  normal: { color: 'radial-gradient(circle, #334155 0%, #0f172a 100%)', shadow: '#64748b', backdrop: '#0b1322', sprite: 'assets/nomal.png' }
 };
 
 let monsterType = 'normal';
@@ -90,6 +90,32 @@ function updateMonsterImageForHealth(currentHp, maximumHp) {
   });
 }
 
+// PNG monster saat ini memiliki latar yang tidak transparan. Karena itu, tema
+// arena dipisahkan dari gambar agar warna battle tetap mengikuti jenis monster
+// di semua tahap HP (normal, 50%, dan 25%).
+function applyBattleTheme(monsterStyle) {
+  const battlePage = document.body;
+  if (!battlePage || (battlePage.classList && !battlePage.classList.contains('battle-page'))) return;
+
+  const accent = monsterStyle.shadow;
+  const theme = {
+    '--monster-accent': accent,
+    '--monster-backdrop': monsterStyle.backdrop,
+    '--monster-glow': `${accent}55`,
+    '--monster-glow-soft': `${accent}22`,
+    '--monster-glow-faint': `${accent}12`,
+  };
+
+  Object.entries(theme).forEach(([property, value]) => {
+    if (typeof battlePage.style.setProperty === 'function') {
+      battlePage.style.setProperty(property, value);
+    } else {
+      // Small DOM adapters used by automated tests do not implement setProperty.
+      battlePage.style[property] = value;
+    }
+  });
+}
+
 async function generateMonster(analysisText = null) {
   const inputText = getElement('input-text');
   const rawText = inputText ? inputText.value.trim() : '';
@@ -156,6 +182,7 @@ async function renderMonster(category, monsterForm, storedData) {
   const isExForm = monsterForm === 'ex';
   const imageSrc = await generateMonsterImage(monsterType, monsterForm, currentMonsterHealthStage);
 
+  applyBattleTheme(style);
   monsterEl.style.background = style.color;
   monsterEl.style.boxShadow = `0 12px ${isExForm ? 35 : 24}px ${style.shadow}35`;
   monsterImg.removeAttribute('src');
