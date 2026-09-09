@@ -64,7 +64,12 @@ function getMonsterHealthStage(currentHp, maximumHp) {
 async function generateMonsterImage(typeName, form = 'normal', healthStage = '') {
   const resolvedType = typeName || monsterType;
   const baseType = resolvedType || 'normal';
-  const sprite = monsters[baseType]?.sprite || monsters.normal.sprite;
+
+  if (baseType === 'normal' || !monsters[baseType]) {
+    return 'assets/monster-fallback.svg';
+  }
+
+  const sprite = monsters[baseType].sprite;
   const healthSuffix = healthStage ? `${healthStage}` : '';
   const formSuffix = form === 'normal' ? '' : `_${form}`;
   return sprite.replace(/\.png$/, `${healthSuffix}${formSuffix}.png`);

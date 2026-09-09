@@ -1,40 +1,51 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#080b19">
-<title>クリア！ | Metsu</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#080b19">
+    <title>クリア！ | Metsu</title>
+    <link rel="stylesheet" href="style.css">
 </head>
+
 <body class="result-page">
-<div class="world-grid" aria-hidden="true"></div>
-<header class="site-header shell">
-<a class="brand" href="index.html" aria-label="Metsu ホーム">
-<span class="brand-mark">滅</span> metsu<span class="brand-dot">.</span>
-</a>
-<span class="quiet">ひと息ついて、また一歩。</span>
-</header>
-<main id="reset-overlay" class="result-card">
-<p class="eyebrow">ALL TARGETS ELIMINATED · STEP 03</p>
-<div class="victory-symbol" aria-hidden="true">✦<span>✓</span>✧</div>
-<span class="result-badge">MISSION COMPLETE</span>
-<h1 id="reset-msg">モヤモヤ、討伐完了！</h1>
-<p class="result-description">おつかれさま。<br>今はひと息ついて、肩の力を抜いてみよう。</p>
-<div class="breathing-note">
-<span aria-hidden="true">◌</span>
-<p>
-<strong>ゆっくり吸って、ゆっくり吐いて。</strong>
-<br>次の一歩は、あなたのペースで大丈夫。</p>
-</div>
-<button id="replay-btn" class="button primary" type="button">もう一度あそぶ ↻</button>
-<a class="text-link" href="index.html">ホームに戻る</a>
-</main>
-<footer class="site-footer shell">
-<span class="footer-brand">metsu.</span>
-<span>今日も、あなたの気持ちにおつかれさま。</span>
-</footer>
-<script src="script.js">
-</script>
+    <div class="world-grid" aria-hidden="true"></div>
+    <header class="site-header shell">
+        <a class="brand" href="index.html" aria-label="Metsu ホーム">
+            <span class="brand-mark">滅</span> metsu<span class="brand-dot">.</span>
+        </a>
+        <span class="quiet">ひと息ついて、また一歩。</span>
+    </header>
+    <main id="reset-overlay" class="result-card">
+        <p class="eyebrow">ALL TARGETS ELIMINATED · STEP 03</p>
+        <div class="victory-symbol" aria-hidden="true">✦<span>✓</span>✧</div>
+        <span class="result-badge">MISSION COMPLETE</span>
+        <h1 id="reset-msg">モヤモヤ、討伐完了！</h1>
+        <p class="result-description">おつかれさま。<br>今はひと息ついて、肩の力を抜いてみよう。</p>
+        <div id="result-details" class="result-details">
+            <section class="result-detail-panel">
+                <h2>討伐結果</h2>
+                <div class="result-stat-row"><span>討伐時間</span><strong id="result-time">--.--秒</strong></div>
+                <div class="result-stat-row"><span>最大音量</span><strong id="result-max-volume">--%</strong></div>
+                <div class="result-stat-row"><span>平均トーン</span><strong id="result-avg-tone">測定なし</strong></div>
+                <div class="result-stat-row"><span>攻撃回数</span><strong id="result-attack-count">0 回</strong></div>
+                <div class="result-stat-row"><span>総ダメージ</span><strong id="result-total-damage">0</strong></div>
+                <div class="result-stat-row"><span>平均ダメージ</span><strong id="result-avg-damage">0</strong></div>
+                <div class="result-stat-row"><span>最大ヒット</span><strong id="result-max-hit">0</strong></div>
+                <div class="result-stat-row"><span>モンスター形態</span><strong id="result-form">通常</strong></div>
+                <div class="result-stat-row"><span>ランク</span><strong id="result-rank">C</strong></div>
+            </section>
+        </div>
+        <button id="replay-btn" class="button primary" type="button">もう一度あそぶ ↻</button>
+        <a class="text-link" href="index.html">ホームに戻る</a>
+    </main>
+    <footer class="site-footer shell">
+        <span class="footer-brand">metsu.</span>
+        <span>今日も、あなたの気持ちにおつかれさま。</span>
+    </footer>
+    <script src="script.js"></script>
+    <script src="result.js"></script>
 </body>
+
 </html>

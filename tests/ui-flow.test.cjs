@@ -28,18 +28,18 @@ function app(page, saved = null) {
     getElementById: (id) => elements.get(id) || null,
     querySelectorAll: (selector) => selector.includes('#input-screen')
       ? [...elements.values()].filter(e => ['BUTTON', 'TEXTAREA', 'INPUT'].includes(e.tagName)) : [],
-    body: { style: {}, appendChild() {} },
-    createElement: () => ({ style: {}, remove() {} }),
+    body: { style: {}, appendChild() { } },
+    createElement: () => ({ style: {}, remove() { } }),
   };
   const context = vm.createContext({
     document, console, navigator: {}, location: { hostname: 'localhost' },
-    sessionStorage: { getItem: k => state.get(k) || null, setItem: (k,v) => state.set(k,v), removeItem: k => state.delete(k) },
-    setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout() {},
-    setInterval() { return 1; }, clearInterval() {}, Event: class { constructor(type) { this.type = type; } },
+    sessionStorage: { getItem: k => state.get(k) || null, setItem: (k, v) => state.set(k, v), removeItem: k => state.delete(k) },
+    setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout() { },
+    setInterval() { return 1; }, clearInterval() { }, Event: class { constructor(type) { this.type = type; } },
     alert() { throw Error('Unexpected alert'); },
     fetch() { throw Error('Unexpected network request'); },
   });
-  context.window = { location: { href: page }, addEventListener() {} };
+  context.window = { location: { href: page }, addEventListener() { } };
   for (const [, source] of markup.matchAll(/<script src="([^"]+)"/g)) {
     // Initialize explicitly below, after all modules are loaded.
     let code = fs.readFileSync(path.join(root, source), 'utf8');
@@ -134,6 +134,28 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   result.elements.get('replay-btn').listeners.click();
   assert.equal(result.context.window.location.href, 'index.html');
   assert.equal(result.state.has('metsuBattleData'), false);
+});
+
+test('result page renders stored battle result details', () => {
+  const r = app('result.html');
+  r.state.set('metsuResultData', JSON.stringify({
+    category: '勉強',
+    elapsedMs: 1234,
+    attackCount: 3,
+    totalDamageDealt: 54,
+    maxSingleDamage: 20,
+    maxVolume: 0.8,
+    avgTone: 220,
+    avgToneLabel: '中',
+    monsterForm: 'sm',
+    rawText: 'テスト結果',
+    analysisText: 'テスト結果の解析',
+  }));
+  r.run('renderResultScreen()');
+  assert.equal(r.elements.get('reset-msg').innerText, '『勉強』を討伐した！');
+  assert.equal(r.elements.get('result-time').innerText, '1.23秒');
+  assert.equal(r.elements.get('result-attack-count').innerText, '3 回');
+  assert.equal(r.elements.has('result-source-text'), false);
 });
 
 test('direct battle access without input returns home', async () => {
