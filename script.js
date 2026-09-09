@@ -94,8 +94,14 @@ async function analyzeSpeechText(transcript) {
   });
 }
 
+function shouldAnalyzeAudioFeatures(audioStats) {
+  if (!audioStats || !audioStats.toneSampleCount || audioStats.toneSampleCount < 3) return false;
+  if (!Number.isFinite(audioStats.maxVolume) || audioStats.maxVolume <= 0) return false;
+  return true;
+}
+
 async function analyzeAudioFeatures(audioStats) {
-  if (!audioStats || Object.keys(audioStats).length === 0) return '';
+  if (!shouldAnalyzeAudioFeatures(audioStats)) return '';
 
   const apiKey = CONFIG.AUDIO_API_KEY || CONFIG.GEMINI_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な AUDIO_API_KEY を設定してください。");
@@ -267,7 +273,7 @@ async function startRecognition() {
       const audioStats = typeof window.getMicSessionStats === 'function'
         ? window.getMicSessionStats()
         : null;
-      if (audioStats) {
+      if (shouldAnalyzeAudioFeatures(audioStats)) {
         await analyzeAudioFeatures(audioStats);
       }
     } catch (error) {

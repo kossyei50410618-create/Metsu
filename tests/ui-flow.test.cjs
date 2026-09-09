@@ -125,6 +125,12 @@ test('slang and colloquial variants participate in category rules', () => {
   assert.equal(result.key, 'human');
 });
 
+test('money distress wording stays in the money category instead of slipping into health', () => {
+  const a = app('index.html');
+  const result = a.run('classifyCategory("お金や経済的な不安・不足に対する怒りやストレス")');
+  assert.equal(result.key, 'money');
+});
+
 test('unsupported voice input leaves text entry available', async () => {
   const a = app('index.html');
   await a.run('runInputAction(true)');

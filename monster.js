@@ -117,7 +117,18 @@ async function generateMonster(analysisText = null) {
   const inputText = getElement('input-text');
   const rawText = inputText ? inputText.value.trim() : '';
   const storedData = readBattleData();
-  const sourceText = analysisText || rawText || storedData?.analysisText || storedData?.rawText;
+
+  let normalizedAnalysisText = analysisText || '';
+  if (!normalizedAnalysisText && rawText) {
+    try {
+      normalizedAnalysisText = await analyzeSpeechText(rawText);
+    } catch (error) {
+      console.warn('Speech API 分析に失敗したため、入力テキストを要約表示として使います:', error);
+      normalizedAnalysisText = rawText;
+    }
+  }
+
+  const sourceText = normalizedAnalysisText || rawText || storedData?.analysisText || storedData?.rawText;
   if (!sourceText) return alert('内容を入力してください');
 
   const isFirstEntry = !getElement('battle-screen');
@@ -138,8 +149,8 @@ async function generateMonster(analysisText = null) {
     const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
     saveBattleData({
       rawText: rawText || storedData?.rawText || sourceText,
-      analysisText: analysisText || storedData?.analysisText || '',
-      category: classifiedCategory, // 表示用に元の分類結果(label/secondary込み)も保持
+      analysisText: normalizedAnalysisText || storedData?.analysisText || '',
+      category: classifiedCategory,
       queue: monsterQueue,
       queueIndex: 0,
       monsterForm,
@@ -170,7 +181,13 @@ async function renderMonster(category, monsterForm, storedData) {
   const statusText = getElement('status-text');
   if (statusText) statusText.innerText = 'モンスターを準備しています…';
 
-  maxHp = Math.floor(Math.random() * 81) + 100;
+  if (monsterForm === 'ex') {
+    maxHp = Math.floor(Math.random() * 81) + 180;
+  } else if (monsterForm === 'sm') {
+    maxHp = Math.floor(Math.random() * 41) + 60;
+  } else {
+    maxHp = Math.floor(Math.random() * 81) + 100;
+  }
   hp = maxHp;
 
   const monsterEl = getElement('monster');
