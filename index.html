@@ -32,8 +32,8 @@
                     <h2 id="input-title">召喚コンソール</h2><span class="panel-code">INPUT</span>
                 </div>
                 <div class="input-content"><label for="input-text">今、何にモヤモヤしてる？</label>
-                    <p id="input-help" class="muted">ひとことでも大丈夫。日本語で入力しよう。</p><textarea id="input-text"
-                        placeholder="例：上司に振り回されてばかりで、もううんざり…" aria-describedby="input-help input-error"></textarea>
+                    <textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…"
+                        aria-describedby="input-error"></textarea>
                     <div class="input-meta"><span>✎ ターゲットデータ</span><span id="character-count">0 文字</span></div>
                     <p id="input-error" class="error-message" role="alert"></p>
                     <div id="input-actions"><button id="generate-btn" class="button primary"
@@ -41,11 +41,10 @@
                                 aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary"
                             type="button">◉ 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
                     <p id="pipeline-stage" role="status" aria-live="polite"></p>
-                    <p id="mic-status" class="mic-status" role="status">文字入力なら、マイクは不要です。</p>
+                    <p id="mic-status" class="mic-status" role="status" aria-live="polite"></p>
                     <details class="mic-settings" open>
                         <summary>マイク設定 <span>OPTIONAL</span></summary>
                         <div id="mic-meter">
-                            <p class="quiet">感度を調整できます。環境音の調整中は静かにして待ちます。</p>
                             <div class="mic-meter-controls"><button id="mic-start-btn"
                                     type="button">マイク確認</button><button id="mic-calibrate-btn" type="button"
                                     disabled>環境音調整</button><button id="mic-stop-btn" type="button">停止</button></div>
@@ -65,7 +64,6 @@
                             <p id="mic-noise-floor" class="quiet">ノイズフロア: 未較正</p>
                         </div>
                     </details>
-                    <p class="privacy-note">音声は認識・解析に外部サービスを利用し、話し終わると自動でバトルへ進みます。</p>
                 </div>
             </section>
         </div>
