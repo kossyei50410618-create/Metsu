@@ -13,9 +13,14 @@ if (feelingInput) {
 }
 document.getElementById('mic-stop-btn')?.addEventListener('click', () => {
   stopMicMeter();
-  document.getElementById('mic-status').textContent = 'マイクを停止しました。文字入力でも遊べます。';
-  document.getElementById('mic-meter-fill').style.width = '0%';
-  document.getElementById('mic-meter-value').textContent = '0.00';
-  document.getElementById('mic-tone-frequency').textContent = '-- Hz';
-  document.getElementById('mic-tone-label').textContent = '音声なし';
+  const micStatus = document.getElementById('mic-status');
+  if (micStatus) micStatus.textContent = 'マイクを停止しました。';
+  const micMeterFill = document.getElementById('mic-meter-fill');
+  if (micMeterFill) micMeterFill.style.width = '0%';
+  const micMeterValue = document.getElementById('mic-meter-value');
+  if (micMeterValue) micMeterValue.textContent = '0.00';
+  const micToneFrequency = document.getElementById('mic-tone-frequency');
+  if (micToneFrequency) micToneFrequency.textContent = '-- Hz';
+  const micToneLabel = document.getElementById('mic-tone-label');
+  if (micToneLabel) micToneLabel.textContent = '音声なし';
 });
