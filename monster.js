@@ -12,7 +12,7 @@ const monsters = {
   probability: { color: 'radial-gradient(circle, #fde047 0%, #f59e0b 100%)', shadow: '#f59e0b', backdrop: '#2c1904', sprite: 'assets/probability.png' },
   habit: { color: 'radial-gradient(circle, #64748b 0%, #334155 100%)', shadow: '#64748b', backdrop: '#111c2a', sprite: 'assets/habit.png' },
   leisure: { color: 'radial-gradient(circle, #0f766e 0%, #115e59 100%)', shadow: '#2dd4bf', backdrop: '#062622', sprite: 'assets/leisure.png' },
-  normal: { color: 'radial-gradient(circle, #334155 0%, #0f172a 100%)', shadow: '#64748b', backdrop: '#0b1322', sprite: 'assets/nomal.png' }
+  normal: { color: 'radial-gradient(circle, #334155 0%, #0f172a 100%)', shadow: '#64748b', backdrop: '#0b1322', sprite: 'assets/normal.png' }
 };
 
 let monsterType = 'normal';
