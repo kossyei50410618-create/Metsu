@@ -90,9 +90,6 @@ function updateMonsterImageForHealth(currentHp, maximumHp) {
   });
 }
 
-// PNG monster saat ini memiliki latar yang tidak transparan. Karena itu, tema
-// arena dipisahkan dari gambar agar warna battle tetap mengikuti jenis monster
-// di semua tahap HP (normal, 50%, dan 25%).
 function applyBattleTheme(monsterStyle) {
   const battlePage = document.body;
   if (!battlePage || (battlePage.classList && !battlePage.classList.contains('battle-page'))) return;

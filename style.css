@@ -136,7 +136,6 @@ p {
     flex: 0 0 auto;
 }
 
-/* Nilai ini diperbarui oleh monster.js sesuai jenis monster aktif. */
 body.battle-page {
     --monster-accent: #d946ef;
     --monster-backdrop: #160a2b;
