@@ -1,9 +1,17 @@
 // main.js
 const CONFIG = {
-  AUDIO_API_KEY: "AQ.Ab8RN6I2vZb7-HYEP9FX_v551xo8Qlh_F-elOZVJzYQ9Y_K83A",
-  SPEECH_API_KEY: "AQ.Ab8RN6L9Y8cPiZraT6QAJWZobHFacoVvExGHiMLbZAbvYGPbkA",
-  SPEECH_ANALYSIS_MODEL: "gemini-3.5-flash-lite",
+  // 役割を分けるため、共通補助キーではなく専用キーを保持する
+  SPEECH_API_KEY: "AQ.Ab8RN6LNvjPKhwe5_YVP6SzPACWf9nVDKLIaCDwenJcjTlftJA",
+  AUDIO_API_KEY: "AQ.Ab8RN6JJ0atrf9NcSJNUbG7L1Y0W1lwyDmTdz1V6EP0OTH2cww",
+
+  // 文字起こし・音声要約に使うモデル
+  SPEECH_ANALYSIS_MODEL: "gemini-3.7-flash",
+
+  // 音響特徴量（音の大きさ・周波数・抑揚）に使うモデル
+  AUDIO_ANALYSIS_MODEL: "gemini-3.5-flash-lite",
   JUDGE_MODEL: "gemini-3.5-flash-lite",
+
+  // 各種しきい値
   STATE_CONFIDENCE_THRESHOLD: 0.7,
   PATTERN_CONFIDENCE_THRESHOLD: 0.7,
   SAFETY_CONFIDENCE_THRESHOLD: 0.82,
@@ -38,7 +46,7 @@ async function generateResponse(prompt, userMessage, options = {}) {
   };
 
   const MAX_RETRIES = 3;
-  const RETRY_DELAYS = [2000, 5000, 10000];
+  const RETRY_DELAYS = [5000, 10000, 20000];
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const response = await fetch(url, {
@@ -82,6 +90,25 @@ async function analyzeSpeechText(transcript) {
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 200,
+  });
+}
+
+async function analyzeAudioFeatures(audioStats) {
+  if (!audioStats || Object.keys(audioStats).length === 0) return '';
+
+  const apiKey = CONFIG.AUDIO_API_KEY || CONFIG.GEMINI_API_KEY;
+  if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な AUDIO_API_KEY を設定してください。");
+
+  const prompt = `あなたは音の大きさ・周波数・抑揚から話者の感情的な強さを要約するAIです。
+以下の音声特徴量を読み取り、強さ・周波数の傾向・抑揚を短く日本語で説明してください。`;
+
+  const userMessage = `以下の音声特徴量を解析してください:\n${JSON.stringify(audioStats, null, 2)}`;
+
+  return await generateResponse(prompt, userMessage, {
+    model: CONFIG.AUDIO_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL || CONFIG.LLM_MODEL,
+    apiKey,
+    temperature: 0.0,
+    maxOutputTokens: 120,
   });
 }
 
@@ -227,6 +254,17 @@ async function startRecognition() {
     } catch (error) {
       console.warn('音声解析エラー:', error);
       status.innerText = `認識完了: ${normalizedTranscript}`;
+    }
+
+    try {
+      const audioStats = typeof window.getMicSessionStats === 'function'
+        ? window.getMicSessionStats()
+        : null;
+      if (audioStats) {
+        await analyzeAudioFeatures(audioStats);
+      }
+    } catch (error) {
+      console.warn('音響特徴量解析エラー:', error);
     }
 
     updatePipelineStage('ステップ 3/4: モンスターを生成しています');
