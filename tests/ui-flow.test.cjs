@@ -67,9 +67,9 @@ test('text entry reaches battle with a categorized monster', async () => {
   assert.equal(a.elements.get('generate-btn').disabled, false);
 });
 
-test('unknown categories use a nonempty fallback image', async () => {
+test('unknown categories use the normal sprite image instead of fallback and keep fallback only for real missing monsters', async () => {
   const a = app('index.html');
-  assert.equal(await a.run("generateMonsterImage('normal', 'ex')"), 'assets/monster-fallback.svg');
+  assert.equal(await a.run("generateMonsterImage('normal', 'ex')"), 'assets/normal_ex.png');
   assert.equal(await a.run("generateMonsterImage('missing')"), 'assets/monster-fallback.svg');
   assert.ok(fs.statSync(path.join(root, 'assets/monster-fallback.svg')).size > 0);
 });
