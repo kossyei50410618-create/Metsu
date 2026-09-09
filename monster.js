@@ -65,7 +65,7 @@ async function generateMonsterImage(typeName, form = 'normal', healthStage = '')
   const resolvedType = typeName || monsterType;
   const baseType = resolvedType || 'normal';
 
-  if (baseType === 'normal' || !monsters[baseType]) {
+  if (!monsters[baseType]) {
     return 'assets/monster-fallback.svg';
   }
 
@@ -191,6 +191,11 @@ async function renderMonster(category, monsterForm, storedData) {
   monsterImg.onerror = () => {
     console.warn(`モンスター画像の読み込みに失敗しました: ${imageSrc}`);
     monsterImg.onerror = null;
+    if (monsterType === 'normal') {
+      monsterImg.src = 'assets/normal.png';
+      monsterImg.alt = 'モヤモヤのモンスター';
+      return;
+    }
     monsterImg.src = 'assets/monster-fallback.svg';
     monsterImg.alt = 'モヤモヤのモンスター';
   };

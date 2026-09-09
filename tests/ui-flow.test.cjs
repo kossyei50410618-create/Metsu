@@ -67,9 +67,9 @@ test('text entry reaches battle with a categorized monster', async () => {
   assert.equal(a.elements.get('generate-btn').disabled, false);
 });
 
-test('unknown categories use a nonempty fallback image', async () => {
+test('unknown categories use the normal sprite image instead of fallback and keep fallback only for real missing monsters', async () => {
   const a = app('index.html');
-  assert.equal(await a.run("generateMonsterImage('normal', 'ex')"), 'assets/monster-fallback.svg');
+  assert.equal(await a.run("generateMonsterImage('normal', 'ex')"), 'assets/normal_ex.png');
   assert.equal(await a.run("generateMonsterImage('missing')"), 'assets/monster-fallback.svg');
   assert.ok(fs.statSync(path.join(root, 'assets/monster-fallback.svg')).size > 0);
 });
@@ -97,6 +97,26 @@ test('failed generation restores controls with a retry message', async () => {
   assert.ok(a.elements.get('input-error').textContent.length);
   assert.equal(a.elements.get('generate-btn').disabled, false);
   assert.equal(a.elements.get('input-text').disabled, false);
+});
+
+test('rate-limit errors do not retry repeatedly', async () => {
+  const a = app('index.html');
+  a.run(`
+    attemptCount = 0;
+    fetch = async () => {
+      attemptCount += 1;
+      return {
+        ok: false,
+        status: 429,
+        async text() { return 'rate limit'; },
+      };
+    };
+  `);
+  await assert.rejects(
+    () => a.run('generateResponse("prompt", "message")'),
+    /rate limit|429/
+  );
+  assert.equal(a.run('attemptCount'), 1);
 });
 
 test('slang and colloquial variants participate in category rules', () => {

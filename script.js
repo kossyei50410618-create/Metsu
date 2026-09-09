@@ -1,11 +1,9 @@
 // main.js
 const CONFIG = {
-  GEMINI_API_KEY: "AQ.Ab8RN6JhpW83hx54z-1c2Ze8jy8B1rs3hLfFV-JiOkjmKJoLaQ",
-  SPEECH_API_KEY: "AQ.Ab8RN6IFfGR9A-tEEsxXeTgSPmB_tgUE1AjsoiYTdrOCsZcNHg",
-  SPEECH_ANALYSIS_MODEL: "gemini-3.5-flash",
-  LLM_MODEL: "gemini-3.5-flash",
-  EMBEDDING_MODEL: "gemini-embedding-001",
-  JUDGE_MODEL: "gemini-3.5-flash",
+  AUDIO_API_KEY: "AQ.Ab8RN6I2vZb7-HYEP9FX_v551xo8Qlh_F-elOZVJzYQ9Y_K83A",
+  SPEECH_API_KEY: "AQ.Ab8RN6L9Y8cPiZraT6QAJWZobHFacoVvExGHiMLbZAbvYGPbkA",
+  SPEECH_ANALYSIS_MODEL: "gemini-3.5-flash-lite",
+  JUDGE_MODEL: "gemini-3.5-flash-lite",
   STATE_CONFIDENCE_THRESHOLD: 0.7,
   PATTERN_CONFIDENCE_THRESHOLD: 0.7,
   SAFETY_CONFIDENCE_THRESHOLD: 0.82,
@@ -39,8 +37,9 @@ async function generateResponse(prompt, userMessage, options = {}) {
     generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
   };
 
-  const MAX_RETRIES = 3;
-  const RETRY_DELAYS = [2000, 5000, 10000];
+  // 429/503 が出ても連続リトライを避け、即時に失敗させる。
+  const MAX_RETRIES = 0;
+  const RETRY_DELAYS = [];
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const response = await fetch(url, {
@@ -125,6 +124,10 @@ async function listen() {
     let resolved = false;
     let timeoutId = null;
 
+    recognition.onstart = () => {
+      window.startMicVolumeCollection();
+    };
+
     recognition.onresult = (event) => {
       const lastResult = event.results[event.results.length - 1];
       if (lastResult.isFinal) {
@@ -135,6 +138,7 @@ async function listen() {
     };
 
     recognition.onerror = (event) => {
+      window.stopMicVolumeCollection();
       cleanup();
       if (event.error === "no-speech" || event.error === "aborted") {
         resolve("");
@@ -144,6 +148,7 @@ async function listen() {
     };
 
     recognition.onend = () => {
+      window.stopMicVolumeCollection();
       if (!resolved) {
         cleanup();
         resolve(finalTranscript || "");
@@ -161,6 +166,7 @@ async function listen() {
     timeoutId = setTimeout(() => {
       if (!resolved) {
         try { recognition.stop(); } catch (e) { }
+        window.stopMicVolumeCollection();
         cleanup();
         if (finalTranscript) {
           resolve(finalTranscript);
@@ -206,7 +212,6 @@ async function startRecognition() {
   status.innerText = '録音中... 話してください。';
 
   try {
-    window.startMicVolumeCollection();
     const transcript = await listen();
     const normalizedTranscript = normalizeSpeechTranscript(transcript);
     window.stopMicVolumeCollection();
