@@ -99,6 +99,26 @@ test('failed generation restores controls with a retry message', async () => {
   assert.equal(a.elements.get('input-text').disabled, false);
 });
 
+test('rate-limit errors do not retry repeatedly', async () => {
+  const a = app('index.html');
+  a.run(`
+    attemptCount = 0;
+    fetch = async () => {
+      attemptCount += 1;
+      return {
+        ok: false,
+        status: 429,
+        async text() { return 'rate limit'; },
+      };
+    };
+  `);
+  await assert.rejects(
+    () => a.run('generateResponse("prompt", "message")'),
+    /rate limit|429/
+  );
+  assert.equal(a.run('attemptCount'), 1);
+});
+
 test('slang and colloquial variants participate in category rules', () => {
   const a = app('index.html');
   const result = a.run('classifyCategory("空気読めないやつがウザくてしんどい")');
@@ -111,6 +131,13 @@ test('unsupported voice input leaves text entry available', async () => {
   assert.ok(a.elements.get('mic-status').innerText.length);
   assert.equal(a.elements.get('generate-btn').disabled, false);
   assert.equal(a.elements.get('mic-calibrate-btn').disabled, true);
+});
+
+test('index page exposes the mic diagnostic panel at load time', () => {
+  const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+  assert.match(markup, /<details class="mic-settings" open>/);
+  assert.match(markup, /id="mic-tone-frequency"/);
+  assert.match(markup, /id="mic-intonation-value"/);
 });
 
 test('battle HP, repeated clicks, queue transition and replay work', async () => {

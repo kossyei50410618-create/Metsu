@@ -136,6 +136,24 @@ p {
     flex: 0 0 auto;
 }
 
+body.battle-page {
+    --monster-accent: #d946ef;
+    --monster-backdrop: #160a2b;
+    --monster-glow: #d946ef55;
+    --monster-glow-soft: #d946ef22;
+    --monster-glow-faint: #d946ef12;
+    background: radial-gradient(ellipse at 50% 44%, var(--monster-glow), transparent 52%), radial-gradient(ellipse at 92% 92%, var(--monster-glow-soft), transparent 50%), linear-gradient(135deg, var(--monster-backdrop), #050913 74%);
+    transition: background .45s ease;
+}
+
+body.battle-page::before {
+    background-image: radial-gradient(circle at 13% 25%, var(--monster-accent) 0 1px, transparent 3px), radial-gradient(circle at 78% 16%, var(--monster-glow) 0 1px, transparent 4px), radial-gradient(circle at 67% 77%, var(--monster-accent) 0 1px, transparent 3px), linear-gradient(28deg, transparent 48%, var(--monster-glow-faint) 49%, transparent 49.2%);
+}
+
+body.battle-page .world-grid::before {
+    background-image: linear-gradient(var(--monster-glow) 1px, transparent 1px), linear-gradient(90deg, var(--monster-glow) 1px, transparent 1px);
+}
+
 .brand img {
     display: block;
     width: 176px;
@@ -444,7 +462,7 @@ kbd {
     width: 90%;
     height: 95%;
     border-radius: 50%;
-    background: radial-gradient(ellipse, #b132e248, #6f27b418 50%, transparent 70%);
+    background: radial-gradient(ellipse, var(--monster-glow, #b132e248), var(--monster-glow-faint, #6f27b418) 50%, transparent 70%);
     z-index: -1;
 }
 
@@ -461,8 +479,8 @@ kbd {
 .summon-ring {
     position: absolute;
     pointer-events: none;
-    border: 1px solid #a86ee17a;
-    box-shadow: 0 0 24px #a347e826, inset 0 0 20px #a347e812;
+    border: 1px solid var(--monster-glow, #a86ee17a);
+    box-shadow: 0 0 24px var(--monster-glow-soft, #a347e826), inset 0 0 20px var(--monster-glow-faint, #a347e812);
     border-radius: 50%;
     z-index: -1;
 }
@@ -474,7 +492,7 @@ kbd {
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    outline: 1px dashed #a471cd40;
+    outline: 1px dashed var(--monster-glow-soft, #a471cd40);
     outline-offset: 15px;
 }
 
@@ -483,8 +501,8 @@ kbd {
     height: 88px;
     bottom: 7px;
     left: 5%;
-    border: 2px solid #6dd9fb6b;
-    box-shadow: 0 0 24px #43c9ed35, inset 0 0 24px #43c9ed25;
+    border: 2px solid var(--monster-glow, #6dd9fb6b);
+    box-shadow: 0 0 24px var(--monster-glow-soft, #43c9ed35), inset 0 0 24px var(--monster-glow-faint, #43c9ed25);
     transform: rotate(-4deg);
 }
 
@@ -922,8 +940,8 @@ summary>span {
 
 #status-text {
     font-size: clamp(22px, 2vw, 28px);
-    color: #f0d6ff;
-    text-shadow: 0 0 20px #d170ee55;
+    color: var(--monster-accent);
+    text-shadow: 0 0 20px var(--monster-glow);
     margin-bottom: 20px;
     min-height: 35px;
 }
@@ -983,12 +1001,13 @@ summary>span {
     max-width: 90%;
     height: 354px;
     padding: 0;
-    border: 1px solid #8767b569;
+    border: 1px solid var(--monster-glow);
     border-radius: 16px;
     overflow: hidden;
     user-select: none;
-    background: #26103b;
-    transition: transform .1s;
+    background: var(--monster-glow-faint);
+    box-shadow: 0 12px 24px var(--monster-glow-soft);
+    transition: transform .1s, border-color .45s ease, box-shadow .45s ease;
 }
 
 #monster img {
