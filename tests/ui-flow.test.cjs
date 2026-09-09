@@ -99,6 +99,26 @@ test('failed generation restores controls with a retry message', async () => {
   assert.equal(a.elements.get('input-text').disabled, false);
 });
 
+test('rate-limit errors do not retry repeatedly', async () => {
+  const a = app('index.html');
+  a.run(`
+    attemptCount = 0;
+    fetch = async () => {
+      attemptCount += 1;
+      return {
+        ok: false,
+        status: 429,
+        async text() { return 'rate limit'; },
+      };
+    };
+  `);
+  await assert.rejects(
+    () => a.run('generateResponse("prompt", "message")'),
+    /rate limit|429/
+  );
+  assert.equal(a.run('attemptCount'), 1);
+});
+
 test('slang and colloquial variants participate in category rules', () => {
   const a = app('index.html');
   const result = a.run('classifyCategory("空気読めないやつがウザくてしんどい")');
