@@ -12,7 +12,7 @@ const monsters = {
   probability: { color: 'radial-gradient(circle, #fde047 0%, #f59e0b 100%)', shadow: '#f59e0b', sprite: 'assets/probability.png' },
   habit: { color: 'radial-gradient(circle, #64748b 0%, #334155 100%)', shadow: '#64748b', sprite: 'assets/habit.png' },
   leisure: { color: 'radial-gradient(circle, #0f766e 0%, #115e59 100%)', shadow: '#2dd4bf', sprite: 'assets/leisure.png' },
-  normal: { color: 'radial-gradient(circle, #334155 0%, #0f172a 100%)', shadow: '#64748b', sprite: 'assets/nomal.png' }
+  normal: { color: 'radial-gradient(circle, #334155 0%, #0f172a 100%)', shadow: '#64748b', sprite: 'assets/normal.png' }
 };
 
 let monsterType = 'normal';
@@ -65,7 +65,7 @@ async function generateMonsterImage(typeName, form = 'normal', healthStage = '')
   const resolvedType = typeName || monsterType;
   const baseType = resolvedType || 'normal';
 
-  if (baseType === 'normal' || !monsters[baseType]) {
+  if (!monsters[baseType]) {
     return 'assets/monster-fallback.svg';
   }
 
@@ -164,6 +164,11 @@ async function renderMonster(category, monsterForm, storedData) {
   monsterImg.onerror = () => {
     console.warn(`モンスター画像の読み込みに失敗しました: ${imageSrc}`);
     monsterImg.onerror = null;
+    if (monsterType === 'normal') {
+      monsterImg.src = 'assets/normal.png';
+      monsterImg.alt = 'モヤモヤのモンスター';
+      return;
+    }
     monsterImg.src = 'assets/monster-fallback.svg';
     monsterImg.alt = 'モヤモヤのモンスター';
   };
