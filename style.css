@@ -45,9 +45,8 @@ h1, h2, h3 { line-height: 1.5; }
 p { overflow-wrap: anywhere; }
 .shell { width: min(1440px, calc(100% - 72px)); margin-inline: auto; }
 .site-header { display: flex; align-items: center; justify-content: space-between; min-height: 94px; gap: 25px; border-bottom: 1px solid #26354b; }
-.brand { display: inline-flex; align-items: center; font: 800 33px Arial, sans-serif; letter-spacing: -1.7px; }
-.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; background: #6850ce; color: white; border-radius: 12px; font: 27px Meiryo, sans-serif; margin-right: 10px; transform: rotate(-7deg); letter-spacing: 0; box-shadow: 0 0 22px #8360ef45; }
-.brand-dot { color: var(--purple); }
+.brand { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.brand img { display: block; width: 176px; height: 72px; object-fit: contain; }
 nav { display: flex; align-self: stretch; gap: 40px; }
 nav a { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid transparent; font-size: 16px; color: var(--muted); }
 nav a span { font: 12px Consolas, monospace; letter-spacing: 1px; }
@@ -215,4 +214,5 @@ textarea { min-height: 166px; }
     .input-content { padding-inline: 16px; }
     .lobby-heading h1 { font-size: 30px; }
     .site-header { flex-wrap: wrap; padding-block: 14px; }
+    .brand img { width: 147px; height: 60px; }
 }
