@@ -99,6 +99,12 @@ test('failed generation restores controls with a retry message', async () => {
   assert.equal(a.elements.get('input-text').disabled, false);
 });
 
+test('slang and colloquial variants participate in category rules', () => {
+  const a = app('index.html');
+  const result = a.run('classifyCategory("空気読めないやつがウザくてしんどい")');
+  assert.equal(result.key, 'human');
+});
+
 test('unsupported voice input leaves text entry available', async () => {
   const a = app('index.html');
   await a.run('runInputAction(true)');
