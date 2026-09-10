@@ -47,11 +47,7 @@ let micMeterRunning = false;
 
 // マイクが初期化済みか
 let micMeterInitialized = false;
-
-// マイクの感度
-let micSensitivity = 1.5;
-
-// 発話中の音量を記録する配列
+let micSensitivity = 0.8;
 let micVolumeHistory = [];
 
 // 発話中の声の高さを記録する配列
