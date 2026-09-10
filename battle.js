@@ -14,12 +14,18 @@ const RESULT_DATA_KEY = 'metsuResultData';
 
 const ZIG_WS_PORT = 8765;
 const ZIG_ACCEL_ATTACK_THRESHOLD = 0.45;
-const ZIG_ATTACK_COOLDOWN_MS = 5000;
+const ZIG_GYRO_INVALIDATE_NEGATIVE_X = -0.5;
+const ZIG_GYRO_INVALIDATE_POSITIVE_X = 0.5;
+const ZIG_GRAVITY_MIN_Y = 0.95;
+const ZIG_GRAVITY_MAX_Y = 1.05;
+const ZIG_GRAVITY_READY_HOLD_MS = 1500;
 
 let zigSocket = null;
 let zigAttackActive = false;
 let zigMotionState = 'ready';
-let zigAttackCooldownUntil = null;
+let zigGravityHoldStartedAt = null;
+let zigAttackEnabled = false;
+let zigLastGyroX = 0;
 
 function extractZigVector(data, prefix) {
   const sensordata = (data && typeof data.sensordata === 'object') ? data.sensordata : data;
@@ -41,30 +47,67 @@ function handleZigSimData(raw) {
   try { data = JSON.parse(raw); } catch (err) { return; }
 
   const accel = extractZigVector(data, 'accel');
-  const accelMagnitude = Math.sqrt(accel.x ** 2 + accel.y ** 2 + accel.z ** 2);
+  const gyro = extractZigVector(data, 'gyro');
+  const gravity = extractZigVector(data, 'gravity');
   const now = Date.now();
   const hintEl = getElement('attack-hint');
 
-  if (zigMotionState === 'cooldown') {
-    if (zigAttackCooldownUntil !== null && now >= zigAttackCooldownUntil) {
-      zigMotionState = 'ready';
-      zigAttackCooldownUntil = null;
-      if (hintEl) hintEl.innerText = 'パンチングボール接続中: 叩いて攻撃！';
+  const accelForce = Math.max(0, -accel.z);
+  const gyroX = gyro.x;
+  const gravityY = gravity.y ?? 0;
+
+  // ジャイロ x 軸が -0.5 未満から +0.5 超に切り替わると攻撃を無効化。
+  if (zigLastGyroX < ZIG_GYRO_INVALIDATE_NEGATIVE_X && gyroX > ZIG_GYRO_INVALIDATE_POSITIVE_X) {
+    zigAttackEnabled = false;
+    zigMotionState = 'ready';
+    zigGravityHoldStartedAt = null;
+    if (hintEl) hintEl.innerText = '攻撃を無効化しました。重力安定で有効化待ち...';
+  }
+
+  // 無効化後は重力 y=0.95〜1.05 が 1.5 秒安定したら再有効化する。
+  if (!zigAttackEnabled) {
+    const gravityIsStable = gravityY >= ZIG_GRAVITY_MIN_Y && gravityY <= ZIG_GRAVITY_MAX_Y;
+    if (!gravityIsStable) {
+      zigGravityHoldStartedAt = null;
+      zigLastGyroX = gyroX;
       return;
     }
-    if (hintEl) hintEl.innerText = '5秒後次の攻撃を受け付けます...';
+
+    if (zigGravityHoldStartedAt === null) {
+      zigGravityHoldStartedAt = now;
+      if (hintEl) hintEl.innerText = '重力安定を確認中...';
+      zigLastGyroX = gyroX;
+      return;
+    }
+
+    if (now - zigGravityHoldStartedAt >= ZIG_GRAVITY_READY_HOLD_MS) {
+      zigAttackEnabled = true;
+      zigMotionState = 'ready';
+      zigGravityHoldStartedAt = null;
+      if (hintEl) hintEl.innerText = '攻撃有効化';
+    }
+
+    zigLastGyroX = gyroX;
     return;
   }
 
-  const gyro = extractZigVector(data, 'gyro');
-  if (accelMagnitude < ZIG_ACCEL_ATTACK_THRESHOLD || gyro.x >= 0) return;
+  // 有効化後、ジャイロ x 軸が負方向のときだけ開始を認める。
+  if (gyroX >= 0 || zigMotionState === 'cooldown') {
+    zigLastGyroX = gyroX;
+    return;
+  }
 
-  const negativeGyroX = Math.max(0, -gyro.x);
-  const power = Math.max(1, Math.min(3, 1 + negativeGyroX / 4));
+  if (accelForce < ZIG_ACCEL_ATTACK_THRESHOLD) {
+    zigLastGyroX = gyroX;
+    return;
+  }
 
+  const power = Math.max(1, Math.min(3, 1 + accelForce / 4));
   attackMonster(power);
   zigMotionState = 'cooldown';
-  zigAttackCooldownUntil = now + ZIG_ATTACK_COOLDOWN_MS;
+  if (hintEl) hintEl.innerText = '攻撃後の揺れ待機中...';
+
+  zigLastGyroX = gyroX;
 }
 
 function connectZigSim() {
@@ -109,13 +152,18 @@ function disconnectZigSim() {
 function startZigAttackDetection() {
   zigAttackActive = true;
   zigMotionState = 'ready';
-  zigAttackCooldownUntil = null;
+  zigGravityHoldStartedAt = null;
+  zigAttackEnabled = false;
+  zigLastGyroX = 0;
   connectZigSim();
 }
 
 function stopZigAttackDetection() {
   zigAttackActive = false;
-  zigAttackCooldownUntil = null;
+  zigGravityHoldStartedAt = null;
+  zigMotionState = 'ready';
+  zigAttackEnabled = false;
+  zigLastGyroX = 0;
 }
 
 function syncHpUi() {
