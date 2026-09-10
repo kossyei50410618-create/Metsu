@@ -228,7 +228,6 @@ async function renderMonster(category, monsterForm, storedData) {
   getElement('attack-hint').innerText = '';
   if (statusText) statusText.innerText = `${currentCategory}のモンスター${formLabel}${queueLabel}`;
   getElement('display-text').innerText = storedData?.analysisText ? `解析: ${storedData.analysisText}` : `入力: ${storedData?.rawText || ''}`;
-  getElement('category-label').innerText = `分類: ${currentCategory}${queueLabel}`;
   monsterImg.alt = `${currentCategory}のモンスター`;
   syncHpUi();
 

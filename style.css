@@ -906,24 +906,14 @@ summary>span {
 .battle-message {
     color: var(--ink);
     font-size: 16px;
+    line-height: 1.8;
     padding: 12px;
     border: 1px solid #33425b;
     border-radius: 4px;
     background: #090f21a8;
-    max-height: 180px;
-    overflow: auto;
-    margin-bottom: 25px;
-}
-
-.category-label {
-    color: var(--purple);
-    font-size: 16px;
-}
-
-.profile-divider {
-    height: 1px;
-    background: var(--line);
-    margin: 24px 0;
+    min-height: 220px;
+    margin-bottom: 0;
+    overflow-wrap: anywhere;
 }
 
 .arena {

@@ -4,8 +4,8 @@ const CONFIG = {
   SPEECH_API_KEY: "AQ.Ab8RN6LNvjPKhwe5_YVP6SzPACWf9nVDKLIaCDwenJcjTlftJA",
   AUDIO_API_KEY: "AQ.Ab8RN6JJ0atrf9NcSJNUbG7L1Y0W1lwyDmTdz1V6EP0OTH2cww",
 
-  // 文字起こし・音声要約に使うモデル
-  SPEECH_ANALYSIS_MODEL: "gemini-3.7-flash",
+  // 文字起こし後のテキスト解析に使うモデル
+  SPEECH_ANALYSIS_MODEL: "gemini-3.1-flash-lite",
 
   // 音響特徴量（音の大きさ・周波数・抑揚）に使うモデル
   AUDIO_ANALYSIS_MODEL: "gemini-3.5-flash-lite",
@@ -40,9 +40,9 @@ async function generateResponse(prompt, userMessage, options = {}) {
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const requestBody = {
-    system_instruction: { parts: [{ text: prompt }] },
+    systemInstruction: { parts: [{ text: prompt }] },
     contents: [{ role: "user", parts: [{ text: userMessage }] }],
-    generationConfig: { temperature, maxOutputTokens, thinkingConfig: { thinkingBudget: 0 } },
+    generationConfig: { temperature, maxOutputTokens },
   };
 
   // 429/503 が出ても連続リトライを避け、即時に失敗させる。
@@ -58,7 +58,16 @@ async function generateResponse(prompt, userMessage, options = {}) {
 
     if (response.ok) {
       const data = await response.json();
-      return data.candidates[0].content.parts[0].text.trim();
+      const candidate = data.candidates?.[0];
+      const text = candidate?.content?.parts
+        ?.map((part) => part.text || '')
+        .join('')
+        .trim();
+      if (!text) throw new Error('Gemini APIが空の解析結果を返しました。');
+      if (candidate.finishReason === 'MAX_TOKENS') {
+        throw new Error('Gemini APIの解析結果が途中で終了しました。');
+      }
+      return text;
     }
 
     const errorText = await response.text();
@@ -83,15 +92,17 @@ async function analyzeSpeechText(transcript) {
 【重要】
 後の分類精度を上げるため、発話内容が以下の「対象カテゴリ」のどれに最も近いかを推測し、そのカテゴリに関連する具体的なキーワード（仕事、上司、お金、時間、健康、勉強、スマホなど）を意図的に含めて要約してください。
 対象カテゴリ：対人関係、家族・生活環境、仕事・キャリア、お金・経済、健康・心身、生き方・自己実現、時間、デジタル、勉強、確率・不確実性、習慣・行動、趣味・余暇
-出力形式：「〜に対する怒り。」のような形で、1〜2文の簡潔な日本語のみを返すこと。`;
+  出力形式：「〜に対する怒り。」のような形で、完結した1文の簡潔な日本語のみを返すこと。
+文の途中で止めたり、最後の語を省略したりせず、必ず「。」または「！」で終えること。`;
   const userMessage = `以下の発話を解析してください：\n${transcript}`;
 
-  return await generateResponse(prompt, userMessage, {
+  const analysis = await generateResponse(prompt, userMessage, {
     model: CONFIG.SPEECH_ANALYSIS_MODEL || CONFIG.LLM_MODEL,
     apiKey,
     temperature: 0.0,
-    maxOutputTokens: 200,
+    maxOutputTokens: 400,
   });
+  return /[。！？!?」』]$/.test(analysis) ? analysis : transcript;
 }
 
 function shouldAnalyzeAudioFeatures(audioStats) {
