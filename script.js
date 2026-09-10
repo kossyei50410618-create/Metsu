@@ -5,7 +5,7 @@ const CONFIG = {
   AUDIO_API_KEY: "AQ.Ab8RN6JJ0atrf9NcSJNUbG7L1Y0W1lwyDmTdz1V6EP0OTH2cww",
 
   // 文字起こし・音声要約に使うモデル
-  SPEECH_ANALYSIS_MODEL: "gemini-3.7-flash",
+  SPEECH_ANALYSIS_MODEL: "gemini-3.1-flash-lite",
 
   // 音響特徴量（音の大きさ・周波数・抑揚）に使うモデル
   AUDIO_ANALYSIS_MODEL: "gemini-3.5-flash-lite",

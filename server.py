@@ -10,7 +10,7 @@ WS_PORT = 8765       # ブラウザが接続するポート
 # 接続されているブラウザ（クライアント）を記録するリスト
 connected_clients = set()
 
-# 実際のZIG SIMペイロード {"sensordata":{"accel":{"x":..},"gyro":{...}}} から値を取り出す関数
+# 実際のZIG SIMペイロード {"sensordata":{"accel":{"x":..},"gyro":{...},"gravity":{...}}} から値を取り出す関数
 def extract_vector(data, prefix):
     sensordata = data.get('sensordata', data) if isinstance(data, dict) else {}
     nested = sensordata.get(prefix) if isinstance(sensordata, dict) else None
@@ -28,7 +28,7 @@ def extract_vector(data, prefix):
         float(flat.get(f'{prefix}.z', 0) or 0),
     )
 
-# 受信データの加速度・ジャイロ値をコンソールに1行で表示する関数（受信確認用）
+# 受信データの加速度・ジャイロ・重力値をコンソールに1行で表示する関数（受信確認用）
 def print_sensor_debug(message):
     try:
         data = json.loads(message)
@@ -36,9 +36,11 @@ def print_sensor_debug(message):
         return
     ax, ay, az = extract_vector(data, 'accel')
     gx, gy, gz = extract_vector(data, 'gyro')
+    hx, hy, hz = extract_vector(data, 'gravity')
     line = (
         f"【加速度】X: {ax:5.2f}, Y: {ay:5.2f}, Z: {az:5.2f} [G]"
         f"　【ジャイロ】X: {gx:5.2f}, Y: {gy:5.2f}, Z: {gz:5.2f} [rad/s]"
+        f"　【重力】X: {hx:5.2f}, Y: {hy:5.2f}, Z: {hz:5.2f} [G]"
     )
     print("\r" + line, end="", flush=True)
 
