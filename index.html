@@ -13,10 +13,7 @@
     <a class="skip-link" href="#input-text">入力へスキップ</a>
     <div class="world-grid" aria-hidden="true"></div>
     <header class="site-header shell">
-        <a class="brand" href="index.html" aria-label="Metsu ホーム"><img src="assets/metsu-logo.svg" alt="Metsu"
-                width="176" height="72"></a>
-        <nav aria-label="メインナビゲーション"><a class="active" href="index.html" aria-current="page">ロビー <span>LOBBY</span></a>
-        </nav>
+        <a class="brand" href="index.html" aria-label="Metsu ホーム"><img src="assets/metsu-logo.svg" alt="Metsu" width="176" height="72"></a>
     </header>
     <main class="shell game-main">
         <div class="lobby-heading">
@@ -32,35 +29,24 @@
                     <h2 id="input-title">召喚コンソール</h2><span class="panel-code">INPUT</span>
                 </div>
                 <div class="input-content"><label for="input-text">今、何にモヤモヤしてる？</label>
-                    <textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…"
-                        aria-describedby="input-error"></textarea>
+                    <textarea id="input-text" placeholder="例：上司に振り回されてばかりで、もううんざり…" aria-describedby="input-error"></textarea>
                     <div class="input-meta"><span>✎ ターゲットデータ</span><span id="character-count">0 文字</span></div>
                     <p id="input-error" class="error-message" role="alert"></p>
-                    <div id="input-actions"><button id="generate-btn" class="button primary"
-                            type="button"><span>討伐開始</span><span class="button-en">BATTLE START</span><span
-                                aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary"
-                            type="button">🎤 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
+                    <div id="input-actions"><button id="generate-btn" class="button primary" type="button"><span>討伐開始</span><span class="button-en">BATTLE START</span><span aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary" type="button">🎤 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
                     <p id="pipeline-stage" role="status" aria-live="polite"></p>
                     <p id="mic-status" class="mic-status" role="status" aria-live="polite"></p>
                     <details class="mic-settings" open>
                         <summary>マイク設定</summary>
                         <div id="mic-meter">
-                            <div class="mic-meter-controls"><button id="mic-start-btn"
-                                    type="button">マイク確認</button><button id="mic-calibrate-btn" type="button"
-                                    disabled>環境音調整</button><button id="mic-stop-btn" type="button">停止</button></div>
+                            <div class="mic-meter-controls"><button id="mic-start-btn" type="button">マイク確認</button><button id="mic-calibrate-btn" type="button" disabled>環境音調整</button><button id="mic-stop-btn" type="button">停止</button></div>
                             <div class="mic-meter-display"><span>音量</span>
                                 <div class="mic-meter-track">
                                     <div id="mic-meter-fill"></div>
                                 </div><span id="mic-meter-value">0.00</span>
                             </div>
-                            <div id="mic-sensitivity"><label for="mic-sensitivity-slider">感度</label><input
-                                    id="mic-sensitivity-slider" type="range" min="0" max="3" step="0.1"
-                                    value="0.8"><output id="mic-sensitivity-value"
-                                    for="mic-sensitivity-slider">0.8</output></div>
-                            <div class="mic-tone-display"><span>トーン</span><strong id="mic-tone-frequency">--
-                                    Hz</strong><strong id="mic-tone-label">音声なし</strong></div>
-                            <div class="mic-tone-display"><span>抑揚</span><strong
-                                    id="mic-intonation-value">0.000</strong></div>
+                            <div id="mic-sensitivity"><label for="mic-sensitivity-slider">感度</label><input id="mic-sensitivity-slider" type="range" min="0" max="3" step="0.1" value="0.8"><output id="mic-sensitivity-value" for="mic-sensitivity-slider">0.8</output></div>
+                            <div class="mic-tone-display"><span>トーン</span><strong id="mic-tone-frequency">-- Hz</strong><strong id="mic-tone-label">音声なし</strong></div>
+                            <div class="mic-tone-display"><span>抑揚</span><strong id="mic-intonation-value">0.000</strong></div>
                             <p id="mic-noise-floor" class="quiet">ノイズフロア: 未較正</p>
                         </div>
                     </details>
