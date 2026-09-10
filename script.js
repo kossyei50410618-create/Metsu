@@ -32,7 +32,7 @@ function resetToInputScreen() {
 
 async function generateResponse(prompt, userMessage, options = {}) {
   const {
-    model = CONFIG.LLM_MODEL,
+    model = CONFIG.SPEECH_ANALYSIS_MODEL,
     temperature = 0.7,
     maxOutputTokens = 800,
     apiKey = CONFIG.GEMINI_API_KEY,
@@ -87,7 +87,7 @@ async function analyzeSpeechText(transcript) {
   const userMessage = `以下の発話を解析してください：\n${transcript}`;
 
   return await generateResponse(prompt, userMessage, {
-    model: CONFIG.SPEECH_ANALYSIS_MODEL || CONFIG.LLM_MODEL,
+    model: CONFIG.SPEECH_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL,
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 200,
@@ -112,7 +112,7 @@ async function analyzeAudioFeatures(audioStats) {
   const userMessage = `以下の音声特徴量を解析してください:\n${JSON.stringify(audioStats, null, 2)}`;
 
   return await generateResponse(prompt, userMessage, {
-    model: CONFIG.AUDIO_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL || CONFIG.LLM_MODEL,
+    model: CONFIG.AUDIO_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL,
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 120,
