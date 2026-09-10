@@ -117,17 +117,22 @@ async function analyzeAudioFeatures(audioStats) {
   const apiKey = CONFIG.AUDIO_API_KEY || CONFIG.GEMINI_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な AUDIO_API_KEY を設定してください。");
 
-  const prompt = `あなたは音の大きさ・周波数・抑揚から話者の感情的な強さを要約するAIです。
-以下の音声特徴量を読み取り、強さ・周波数の傾向・抑揚を短く日本語で説明してください。`;
+  const prompt = `あなたは音の大きさ・周波数・抑揚から話者の状態を分析するAIです。
+以下の音声特徴量から想定される内容を、日本語で短く説明してください。
+出力は必ず次の2項目だけを箇条書きにしてください。
+・声のトーン: 数値から想定される声のトーン
+・感情: 数値から想定される感情
+太字などのMarkdown記法は使わず、** を含めないでください。`;
 
   const userMessage = `以下の音声特徴量を解析してください:\n${JSON.stringify(audioStats, null, 2)}`;
 
-  return await generateResponse(prompt, userMessage, {
+  const analysis = await generateResponse(prompt, userMessage, {
     model: CONFIG.AUDIO_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL,
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 120,
   });
+  return analysis.replace(/\*\*/g, '');
 }
 
 function normalizeSpeechTranscript(transcript) {
@@ -280,12 +285,13 @@ async function startRecognition() {
       status.innerText = `認識完了: ${normalizedTranscript}`;
     }
 
+    let audioAnalysis = '';
     try {
       const audioStats = typeof window.getMicSessionStats === 'function'
         ? window.getMicSessionStats()
         : null;
       if (shouldAnalyzeAudioFeatures(audioStats)) {
-        await analyzeAudioFeatures(audioStats);
+        audioAnalysis = await analyzeAudioFeatures(audioStats);
       }
     } catch (error) {
       console.warn('音響特徴量解析エラー:', error);
@@ -294,7 +300,7 @@ async function startRecognition() {
     updatePipelineStage('ステップ 3/4: モンスターを生成しています');
     status.innerText = '認識完了。少し待ってから出現します...';
     await sleep(1200);
-    await generateMonster(analysis || normalizedTranscript);
+    await generateMonster(analysis || normalizedTranscript, audioAnalysis);
     updatePipelineStage('ステップ 4/4: モンスター討伐へ');
   } catch (error) {
     status.innerText = error.message || '音声認識中にエラーが発生しました。';

@@ -69,6 +69,11 @@ function renderResultScreen() {
   setText('result-form', formLabelOf(data.monsterForm));
   setText('result-rank', computeRank(data.elapsedMs, data.attackCount ?? 0));
 
+  const audioAnalysisPanel = document.getElementById('audio-analysis-panel');
+  const audioAnalysisText = typeof data.audioAnalysisText === 'string' ? data.audioAnalysisText.trim() : '';
+  if (audioAnalysisPanel) audioAnalysisPanel.hidden = !audioAnalysisText;
+  setText('result-audio-analysis', audioAnalysisText);
+
 }
 
 renderResultScreen();

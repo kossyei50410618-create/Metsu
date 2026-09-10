@@ -276,6 +276,7 @@ function finalizeBattleResult() {
     monsterForm: storedData.monsterForm || 'normal',
     rawText: storedData.rawText || '',
     analysisText: storedData.analysisText || '',
+    audioAnalysisText: storedData.audioAnalysisText || '',
     elapsedMs,
     attackCount,
     totalDamageDealt,
