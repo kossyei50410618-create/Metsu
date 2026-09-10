@@ -113,7 +113,7 @@ function applyBattleTheme(monsterStyle) {
   });
 }
 
-async function generateMonster(analysisText = null) {
+async function generateMonster(analysisText = null, audioAnalysisText = '') {
   const inputText = getElement('input-text');
   const rawText = inputText ? inputText.value.trim() : '';
   const storedData = readBattleData();
@@ -150,6 +150,7 @@ async function generateMonster(analysisText = null) {
     saveBattleData({
       rawText: rawText || storedData?.rawText || sourceText,
       analysisText: normalizedAnalysisText || storedData?.analysisText || '',
+      audioAnalysisText: audioAnalysisText || storedData?.audioAnalysisText || '',
       category: classifiedCategory,
       queue: monsterQueue,
       queueIndex: 0,
