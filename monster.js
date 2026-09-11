@@ -25,7 +25,7 @@ let monsterQueue = [];      // [{ key, label, monster }, ...]
 let monsterQueueIndex = 0;
 
 const BATTLE_DATA_KEY = 'metsuBattleData';
-const SM_VOLUME_THRESHOLD = 0.2;
+const S_VOLUME_THRESHOLD = 0.2;
 
 // classifyCategoryWithVectors の戻り値(category)から、倒すべき敵の一覧を組み立てる。
 // secondary が無ければ1体だけの配列になる(今までと完全に同じ挙動)。
@@ -49,7 +49,7 @@ function hasNextMonster() {
 function getMonsterForm(volume) {
   if (typeof volume !== 'number' || volume <= 0) return 'normal';
   if (volume > EX_VOLUME_THRESHOLD) return 'ex';
-  if (volume < SM_VOLUME_THRESHOLD) return 'sm';
+  if (volume < S_VOLUME_THRESHOLD) return 's';
   return 'normal';
 }
 
@@ -184,7 +184,7 @@ async function renderMonster(category, monsterForm, storedData) {
 
   if (monsterForm === 'ex') {
     maxHp = Math.floor(Math.random() * 81) + 180;
-  } else if (monsterForm === 'sm') {
+  } else if (monsterForm === 's') {
     maxHp = Math.floor(Math.random() * 41) + 60;
   } else {
     maxHp = Math.floor(Math.random() * 81) + 100;
@@ -215,7 +215,7 @@ async function renderMonster(category, monsterForm, storedData) {
     monsterImg.alt = 'モヤモヤのモンスター';
   };
 
-  const formLabel = monsterForm === 'ex' ? ' (EX)' : monsterForm === 'sm' ? ' (SM)' : '';
+  const formLabel = monsterForm === 'ex' ? ' (EX)' : monsterForm === 's' ? ' (S)' : '';
   const queueLabel = monsterQueue.length > 1 ? ` [${monsterQueueIndex + 1}/${monsterQueue.length}]` : '';
   if (statusText) statusText.innerText = `画像読み込み中... ${currentCategory}${formLabel}`;
 
