@@ -275,6 +275,63 @@ function createParticles() {
   }
 }
 
+function playMonsterDissolve(onComplete) {
+  const monsterEl = getElement('monster');
+  if (!monsterEl) {
+    onComplete();
+    return;
+  }
+
+  const monsterRect = monsterEl.getBoundingClientRect();
+  const particleColor = (monsters[monsterType] || monsters.normal).shadow;
+  const particleCount = 72;
+
+  if (monsterEl.classList && typeof monsterEl.classList.add === 'function') {
+    monsterEl.classList.add('monster-dissolving');
+  } else {
+    monsterEl.className = `${monsterEl.className || ''} monster-dissolving`.trim();
+  }
+  monsterEl.setAttribute('aria-hidden', 'true');
+  monsterEl.disabled = true;
+
+  for (let i = 0; i < particleCount; i++) {
+    const particle = document.createElement('div');
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 100 + Math.random() * 150;
+    const burstX = Math.cos(angle) * distance;
+    const burstY = Math.sin(angle) * distance;
+    const finalX = burstX * (1.15 + Math.random() * 0.25);
+    const finalY = burstY - 150 - Math.random() * 130;
+    const size = Math.random() * 2 + 1.5;
+    particle.className = 'dissolve-particle';
+    particle.style.left = `${monsterRect.left + monsterRect.width / 2}px`;
+    particle.style.top = `${monsterRect.top + monsterRect.height / 2}px`;
+    particle.style.width = `${size}px`;
+    particle.style.height = `${size}px`;
+    particle.style.background = particleColor;
+    const particleStyle = {
+      '--burst-x': `${burstX}px`,
+      '--burst-y': `${burstY}px`,
+      '--final-x': `${finalX}px`,
+      '--final-y': `${finalY}px`,
+      '--particle-delay': `${Math.random() * 180}ms`,
+    };
+    Object.entries(particleStyle).forEach(([property, value]) => {
+      if (typeof particle.style.setProperty === 'function') {
+        particle.style.setProperty(property, value);
+      } else {
+        particle.style[property] = value;
+      }
+    });
+    document.body.appendChild(particle);
+    setTimeout(() => particle.remove(), 1050);
+  }
+
+  setTimeout(() => {
+    onComplete();
+  }, 900);
+}
+
 // 討伐にかかった時間や攻撃統計、音量・トーンをまとめて結果画面に渡すための保存データを作る関数。
 function finalizeBattleResult() {
   const elapsedMs = battleStartTime ? Date.now() - battleStartTime : 0;
@@ -317,13 +374,15 @@ function destroyMonster() {
   finalizeBattleResult();
   stopZigAttackDetection();
 
-  if (typeof hasNextMonster === 'function' && hasNextMonster()) {
-    showAttackFeedback('撃破！ 次の敵が現れた...');
-    setTimeout(async () => {
-      await spawnNextMonster();
-    }, 1000);
-    return;
-  }
+  playMonsterDissolve(() => {
+    if (typeof hasNextMonster === 'function' && hasNextMonster()) {
+      showAttackFeedback('撃破！ 次の敵が現れた...');
+      setTimeout(async () => {
+        await spawnNextMonster();
+      }, 1000);
+      return;
+    }
 
-  showReplayScreen();
+    showReplayScreen();
+  });
 }
