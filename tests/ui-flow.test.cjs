@@ -186,7 +186,7 @@ test('result page renders stored battle result details', () => {
     maxVolume: 0.8,
     avgTone: 220,
     avgToneLabel: '中',
-    monsterForm: 'sm',
+    monsterForm: 's',
     rawText: 'テスト結果',
     analysisText: 'テスト結果の解析',
   }));

@@ -18,7 +18,7 @@ function formatTone(avgTone, label) {
 
 function formLabelOf(form) {
   if (form === 'ex') return 'EX（激怒）';
-  if (form === 'sm') return 'SM（小型）';
+  if (form === 's') return 'S（小型）';
   return '通常';
 }
 

@@ -12,6 +12,7 @@ let maxSingleDamage = 0;
 
 const RESULT_DATA_KEY = 'metsuResultData';
 
+// Zigセンサー入力で攻撃を有効化・無効化するための閾値定義。
 const ZIG_WS_PORT = 8765;
 const ZIG_ACCEL_ATTACK_THRESHOLD = 0.45;
 const ZIG_GYRO_INVALIDATE_NEGATIVE_X = -0.5;
@@ -27,6 +28,7 @@ let zigGravityHoldStartedAt = null;
 let zigAttackEnabled = false;
 let zigLastGyroX = 0;
 
+// Zigセンサーの値を、オブジェクト形式またはフラット形式の入力から{x,y,z}へ正規化して取り出す関数。
 function extractZigVector(data, prefix) {
   const sensordata = (data && typeof data.sensordata === 'object') ? data.sensordata : data;
   const nested = sensordata ? sensordata[prefix] : null;
@@ -41,6 +43,7 @@ function extractZigVector(data, prefix) {
   };
 }
 
+// WebSocketで受け取ったZigセンサー情報を読み、攻撃判定と攻撃可否の状態遷移を管理する関数。
 function handleZigSimData(raw) {
   if (!zigAttackActive) return;
   let data;
@@ -110,6 +113,7 @@ function handleZigSimData(raw) {
   zigLastGyroX = gyroX;
 }
 
+// Zigセンサー用のWebSocket接続を開始して、攻撃入力を受け取れる状態にする関数。
 function connectZigSim() {
   if (zigSocket || typeof WebSocket === 'undefined') return;
   const host = location.hostname || 'localhost';
@@ -142,6 +146,7 @@ function connectZigSim() {
   };
 }
 
+// 既存のZigセンサー接続を閉じて、攻撃検知を安全に切り離す関数。
 function disconnectZigSim() {
   if (zigSocket) {
     try { zigSocket.close(); } catch (err) { }
@@ -149,6 +154,7 @@ function disconnectZigSim() {
   }
 }
 
+// Zigの攻撃検知を開始し、初期状態と接続を準備する関数。
 function startZigAttackDetection() {
   zigAttackActive = true;
   zigMotionState = 'ready';
@@ -158,6 +164,7 @@ function startZigAttackDetection() {
   connectZigSim();
 }
 
+// Zigの攻撃検知を止め、状態変数とセンサー接続の状態をリセットする関数。
 function stopZigAttackDetection() {
   zigAttackActive = false;
   zigGravityHoldStartedAt = null;
@@ -166,6 +173,7 @@ function stopZigAttackDetection() {
   zigLastGyroX = 0;
 }
 
+// 現在のHP値をバーと表示テキストへ反映し、モンスター画像の見た目も更新する関数。
 function syncHpUi() {
   const hpFill = getElement('hp-fill');
   const hpValue = getElement('hp-value');
@@ -184,6 +192,7 @@ function syncHpUi() {
   }
 }
 
+// 攻撃時の一時的なステータスメッセージを表示して、少し後に元のメッセージへ戻す関数。
 function showAttackFeedback(message) {
   const status = getElement('status-text');
   const previous = status.innerText;
@@ -193,6 +202,7 @@ function showAttackFeedback(message) {
   }, 900);
 }
 
+// モンスターへのダメージ計算と攻撃結果更新、HP減少と演出をまとめて処理する関数。
 function attackMonster(eventOrPower) {
   if (hp <= 0) return;
   const now = Date.now();
@@ -237,6 +247,7 @@ function attackMonster(eventOrPower) {
   if (hp <= 0) destroyMonster();
 }
 
+// 攻撃のヒット演出として、モンスター周辺に粒子アニメーションを生成する関数。
 function createParticles() {
   const monsterRect = getElement('monster').getBoundingClientRect();
   for (let i = 0; i < 12; i++) {
@@ -264,7 +275,7 @@ function createParticles() {
   }
 }
 
-// 討伐にかかった時間や攻撃統計、音量・トーンの記録をまとめてresult.html用に保存する
+// 討伐にかかった時間や攻撃統計、音量・トーンをまとめて結果画面に渡すための保存データを作る関数。
 function finalizeBattleResult() {
   const elapsedMs = battleStartTime ? Date.now() - battleStartTime : 0;
   const storedData = readBattleData() || {};
@@ -294,12 +305,13 @@ function finalizeBattleResult() {
   }
 }
 
+// 討伐結果画面へ遷移するための画面切り替え用関数。
 function showReplayScreen() {
   stopZigAttackDetection();
   window.location.href = 'result.html';
 }
 
-// 1体倒した後、キュー　に次の敵(secondaryカテゴリ)がいれば連戦、いなければ結果画面へ。
+// モンスターを倒したあと、次の敵がいれば連戦を続け、無ければ結果画面へ進む関数。
 // hasNextMonster / spawnNextMonster は monster.js 側で定義されている。
 function destroyMonster() {
   finalizeBattleResult();
