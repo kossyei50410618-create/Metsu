@@ -17,9 +17,10 @@ const ZIG_WS_PORT = 8765;
 const ZIG_ACCEL_ATTACK_THRESHOLD = 0.45;
 const ZIG_GYRO_INVALIDATE_NEGATIVE_X = -0.5;
 const ZIG_GYRO_INVALIDATE_POSITIVE_X = 0.5;
-const ZIG_GRAVITY_MIN_Y = 0.95;
-const ZIG_GRAVITY_MAX_Y = 1.05;
+const ZIG_GRAVITY_MIN_Y = 0.98;
+const ZIG_GRAVITY_MAX_Y = 1.02;
 const ZIG_GRAVITY_READY_HOLD_MS = 1500;
+const ZIG_REATTACK_COOLDOWN_MS = 600;
 
 let zigSocket = null;
 let zigAttackActive = false;
@@ -27,6 +28,14 @@ let zigMotionState = 'ready';
 let zigGravityHoldStartedAt = null;
 let zigAttackEnabled = false;
 let zigLastGyroX = 0;
+let zigCooldownStartedAt = null;
+
+function setAttackAvailability(enabled) {
+  const attackReadyEl = getElement('attack-ready');
+  if (!attackReadyEl) return;
+  attackReadyEl.innerText = enabled ? '攻撃可能' : '攻撃不可';
+  attackReadyEl.hidden = false;
+}
 
 // Zigセンサーの値を、オブジェクト形式またはフラット形式の入力から{x,y,z}へ正規化して取り出す関数。
 function extractZigVector(data, prefix) {
@@ -55,6 +64,16 @@ function handleZigSimData(raw) {
   const now = Date.now();
   const hintEl = getElement('attack-hint');
 
+  if (zigMotionState === 'cooldown' && zigCooldownStartedAt !== null) {
+    if (now - zigCooldownStartedAt < ZIG_REATTACK_COOLDOWN_MS) {
+      if (hintEl) hintEl.innerText = '攻撃後の揺れ待機中...';
+      zigLastGyroX = gyro.x;
+      return;
+    }
+    zigMotionState = 'ready';
+    zigCooldownStartedAt = null;
+  }
+
   const accelForce = Math.max(0, -accel.z);
   const gyroX = gyro.x;
   const gravityY = gravity.y ?? 0;
@@ -64,6 +83,7 @@ function handleZigSimData(raw) {
     zigAttackEnabled = false;
     zigMotionState = 'ready';
     zigGravityHoldStartedAt = null;
+    setAttackAvailability(false);
     if (hintEl) hintEl.innerText = '攻撃を無効化しました。重力安定で有効化待ち...';
   }
 
@@ -87,7 +107,8 @@ function handleZigSimData(raw) {
       zigAttackEnabled = true;
       zigMotionState = 'ready';
       zigGravityHoldStartedAt = null;
-      if (hintEl) hintEl.innerText = '攻撃有効化';
+      if (hintEl) hintEl.innerText = '攻撃有効化: 大きく攻撃可能';
+      setAttackAvailability(true);
     }
 
     zigLastGyroX = gyroX;
@@ -107,8 +128,12 @@ function handleZigSimData(raw) {
 
   const power = Math.max(1, Math.min(3, 1 + accelForce / 4));
   attackMonster(power);
+  zigAttackEnabled = false;
   zigMotionState = 'cooldown';
+  zigGravityHoldStartedAt = null;
+  zigCooldownStartedAt = now;
   if (hintEl) hintEl.innerText = '攻撃後の揺れ待機中...';
+  setAttackAvailability(false);
 
   zigLastGyroX = gyroX;
 }
@@ -161,6 +186,7 @@ function startZigAttackDetection() {
   zigGravityHoldStartedAt = null;
   zigAttackEnabled = false;
   zigLastGyroX = 0;
+  setAttackAvailability(false);
   connectZigSim();
 }
 
@@ -171,6 +197,7 @@ function stopZigAttackDetection() {
   zigMotionState = 'ready';
   zigAttackEnabled = false;
   zigLastGyroX = 0;
+  setAttackAvailability(false);
 }
 
 // 現在のHP値をバーと表示テキストへ反映し、モンスター画像の見た目も更新する関数。

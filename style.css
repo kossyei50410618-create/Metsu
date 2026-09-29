@@ -1007,6 +1007,23 @@ summary>span {
     pointer-events: none;
 }
 
+.attack-ready {
+    display: block;
+    color: var(--monster-accent);
+    font-size: clamp(36px, 4vw, 56px);
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: 0.12em;
+    text-align: center;
+    text-shadow: 0 0 14px var(--monster-glow), 0 0 28px var(--monster-glow-soft);
+    margin-top: -12px;
+    min-height: 48px;
+}
+
+.attack-ready[hidden] {
+    display: none;
+}
+
 #monster:hover {
     transform: scale(1.025);
 }
@@ -1096,7 +1113,9 @@ summary>span {
 
 .sensor-status {
     color: var(--muted);
-    font-size: 13px;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.5;
     margin-bottom: 10px;
 }
 

@@ -67,6 +67,12 @@ test('text entry reaches battle with a categorized monster', async () => {
   assert.equal(a.elements.get('generate-btn').disabled, false);
 });
 
+test('positive utterances select the small S sprite form', async () => {
+  const a = app('index.html');
+  assert.equal(a.run("getMonsterFormFromText('ありがとうで心が軽くなりました')"), 's');
+  assert.equal(await a.run("generateMonsterImage('normal', getMonsterFormFromText('ありがとうで心が軽くなりました'))"), 'assets/normal_s.png');
+});
+
 test('unknown categories use the normal sprite image instead of fallback and keep fallback only for real missing monsters', async () => {
   const a = app('index.html');
   assert.equal(await a.run("generateMonsterImage('normal', 'ex')"), 'assets/normal_ex.png');
@@ -173,6 +179,22 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   result.elements.get('replay-btn').listeners.click();
   assert.equal(result.context.window.location.href, 'index.html');
   assert.equal(result.state.has('metsuBattleData'), false);
+});
+
+test('Zig attack availability remains visible in both unavailable and ready states', () => {
+  const a = app('battle.html');
+  a.run('let testNow = 0; Date.now = () => testNow; startZigAttackDetection();');
+  const attackReady = a.elements.get('attack-ready');
+  assert.equal(attackReady.innerText, '攻撃不可');
+  assert.equal(attackReady.hidden, false);
+
+  a.run("handleZigSimData(JSON.stringify({ accel: { z: 0 }, gyro: { x: 0 }, gravity: { y: 1 } })); testNow = 1500; handleZigSimData(JSON.stringify({ accel: { z: 0 }, gyro: { x: 0 }, gravity: { y: 1 } }));");
+  assert.equal(attackReady.innerText, '攻撃可能');
+  assert.equal(attackReady.hidden, false);
+
+  a.run("handleZigSimData(JSON.stringify({ accel: { z: -1 }, gyro: { x: -1 }, gravity: { y: 1 } }));");
+  assert.equal(attackReady.innerText, '攻撃不可');
+  assert.equal(attackReady.hidden, false);
 });
 
 test('result page renders stored battle result details', () => {

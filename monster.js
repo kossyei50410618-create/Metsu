@@ -46,7 +46,32 @@ function hasNextMonster() {
   return monsterQueueIndex < monsterQueue.length - 1;
 }
 
-function getMonsterForm(volume) {
+function normalizeMonsterFormText(text) {
+  if (typeof text !== 'string') return '';
+  return text.replace(/\s+/g, '').toLowerCase();
+}
+
+function getMonsterFormFromText(text) {
+  const normalized = normalizeMonsterFormText(text);
+  if (!normalized) return 'normal';
+
+  const positivePatterns = [
+    'ありがとう', '感謝', '嬉しい', 'うれしい', '楽しい', '安心', '元気',
+    '好き', 'よかった', '良かった', '満足', '良い', '希望', '笑顔',
+    'ポジティブ', '前向き', '成長', '感動'
+  ];
+
+  if (positivePatterns.some((phrase) => normalized.includes(phrase))) {
+    return 's';
+  }
+
+  return 'normal';
+}
+
+function getMonsterForm(volume, text = '') {
+  const forcedForm = getMonsterFormFromText(text);
+  if (forcedForm === 's') return 's';
+
   if (typeof volume !== 'number' || volume <= 0) return 'normal';
   if (volume > EX_VOLUME_THRESHOLD) return 'ex';
   if (volume < S_VOLUME_THRESHOLD) return 's';
@@ -144,7 +169,7 @@ async function generateMonster(analysisText = null, audioAnalysisText = '') {
     monsterQueueIndex = 0;
     activeCategory = monsterQueue[0];
 
-    const monsterForm = getMonsterForm(micMaxVolume);
+    const monsterForm = getMonsterForm(micMaxVolume, rawText || sourceText);
     // 討伐結果画面で使うため、音量の最大値と声のトーンの平均もここで確定させて引き継ぐ
     const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
     saveBattleData({
@@ -168,7 +193,7 @@ async function generateMonster(analysisText = null, audioAnalysisText = '') {
   monsterQueueIndex = storedData?.queueIndex ?? 0;
   activeCategory = monsterQueue[monsterQueueIndex];
 
-  const monsterForm = storedData?.monsterForm || (storedData?.isExForm ? 'ex' : getMonsterForm(micMaxVolume));
+  const monsterForm = storedData?.monsterForm || (storedData?.isExForm ? 'ex' : getMonsterForm(micMaxVolume, storedData?.rawText || storedData?.analysisText || ''));
   await renderMonster(activeCategory, monsterForm, storedData);
 }
 
