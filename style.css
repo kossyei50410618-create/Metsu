@@ -1057,6 +1057,31 @@ summary>span {
     transform: scale(.96);
 }
 
+#monster.monster-dissolving {
+    pointer-events: none;
+    animation: monster-dissolve .9s ease-in forwards;
+}
+
+@keyframes monster-dissolve {
+    0% {
+        opacity: 1;
+        filter: brightness(1.2) saturate(1.2);
+        transform: scale(1);
+    }
+
+    45% {
+        opacity: .72;
+        filter: brightness(2) saturate(.8) blur(1px);
+        transform: scale(1.025) translateY(-4px);
+    }
+
+    100% {
+        opacity: 0;
+        filter: brightness(2.5) saturate(0) blur(7px);
+        transform: scale(.92) translateY(-18px);
+    }
+}
+
 .tap-caption {
     color: var(--cyan);
     font: 13px Consolas, monospace;
@@ -1157,6 +1182,42 @@ summary>span {
     pointer-events: none;
     border-radius: 50%;
     z-index: 30;
+}
+
+.dissolve-particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    z-index: 31;
+    opacity: 0;
+    box-shadow: 0 0 8px currentColor, 0 0 14px currentColor;
+    animation: dissolve-particle 900ms cubic-bezier(.2, .7, .35, 1) var(--particle-delay) forwards;
+}
+
+@keyframes dissolve-particle {
+    0% {
+        opacity: 0;
+        transform: translate(0, 0) scale(.45);
+    }
+
+    18% {
+        opacity: .95;
+    }
+
+    42% {
+        opacity: .9;
+        transform: translate(var(--burst-x), var(--burst-y)) scale(.8);
+    }
+
+    70% {
+        opacity: .72;
+        transform: translate(calc(var(--burst-x) * .95), calc(var(--burst-y) - 55px)) scale(.5);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(var(--final-x), var(--final-y)) scale(.08);
+    }
 }
 
 .result-card {
