@@ -203,6 +203,11 @@ async function renderMonster(category, monsterForm, storedData) {
   currentCategory = category.label;
   currentMonsterForm = monsterForm;
   currentMonsterHealthStage = '';
+  const monsterButton = getElement('monster');
+  if (monsterButton) {
+    monsterButton.removeAttribute('data-state');
+    monsterButton.disabled = false;
+  }
 
   const statusText = getElement('status-text');
   if (statusText) statusText.innerText = 'モンスターを準備しています…';

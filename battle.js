@@ -11,6 +11,7 @@ let totalDamageDealt = 0;
 let maxSingleDamage = 0;
 
 const RESULT_DATA_KEY = 'metsuResultData';
+const MONSTER_DEFEAT_EFFECT_MS = 850;
 
 // Zigセンサー入力で攻撃を有効化・無効化するための閾値定義。
 const ZIG_WS_PORT = 8765;
@@ -343,6 +344,11 @@ function showReplayScreen() {
 function destroyMonster() {
   finalizeBattleResult();
   stopZigAttackDetection();
+  const monsterEl = getElement('monster');
+  if (monsterEl) {
+    monsterEl.setAttribute('data-state', 'defeated');
+    monsterEl.disabled = true;
+  }
 
   if (typeof hasNextMonster === 'function' && hasNextMonster()) {
     showAttackFeedback('撃破！ 次の敵が現れた...');
@@ -352,5 +358,5 @@ function destroyMonster() {
     return;
   }
 
-  showReplayScreen();
+  setTimeout(() => showReplayScreen(), MONSTER_DEFEAT_EFFECT_MS);
 }

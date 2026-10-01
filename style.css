@@ -1007,6 +1007,31 @@ summary>span {
     pointer-events: none;
 }
 
+#monster[data-state="defeated"] {
+    animation: monster-vanish .85s cubic-bezier(.2, .75, .25, 1) forwards;
+    pointer-events: none;
+}
+
+@keyframes monster-vanish {
+    0% {
+        opacity: 1;
+        filter: brightness(1) blur(0);
+        transform: scale(1) rotate(0);
+    }
+
+    32% {
+        opacity: 1;
+        filter: brightness(2.8) blur(1px);
+        transform: scale(1.08) rotate(-3deg);
+    }
+
+    100% {
+        opacity: 0;
+        filter: brightness(2.8) blur(8px);
+        transform: scale(.58) rotate(10deg) translateY(-28px);
+    }
+}
+
 .attack-ready {
     display: block;
     color: var(--monster-accent);

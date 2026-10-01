@@ -170,10 +170,15 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   a.run('hp = 1; attackMonster(); attackMonster(); attackMonster();');
   assert.equal(a.run('hp'), 0);
   assert.equal(a.run('monsterQueueIndex'), 0);
+  assert.equal(a.elements.get('monster').attributes['data-state'], 'defeated');
   for (const fn of a.timers.splice(0)) await fn();
   assert.equal(a.run('monsterQueueIndex'), 1);
   assert.ok(a.run('hp') > 0);
+  assert.equal(a.elements.get('monster').attributes['data-state'], undefined);
+  assert.equal(a.elements.get('monster').disabled, false);
   a.run('hp = 1; attackMonster();');
+  assert.notEqual(a.context.window.location.href, 'result.html');
+  for (const fn of a.timers.splice(0)) await fn();
   assert.equal(a.context.window.location.href, 'result.html');
   const result = app('result.html', { rawText: 'old' });
   result.elements.get('replay-btn').listeners.click();
