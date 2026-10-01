@@ -18,16 +18,18 @@ const CONFIG = {   //api.keyから値読み取る
   PATTERN_CONFIDENCE_THRESHOLD: 0.7,
   SAFETY_CONFIDENCE_THRESHOLD: 0.82,
 };
-console.log("Speech API Key:", CONFIG.SPEECH_API_KEY);
+
 function getElement(id) {
   return document.getElementById(id);
 }
+window.getElement = getElement;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function resetToInputScreen() {
+function resetToInputScreen(event) {
+  event?.preventDefault();
   sessionStorage.removeItem('metsuBattleData');
   window.location.href = 'index.html';
 }
