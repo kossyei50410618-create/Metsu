@@ -1,8 +1,10 @@
-// main.js
-const CONFIG = {
-  // 役割を分けるため、共通補助キーではなく専用キーを保持する
-  SPEECH_API_KEY: "AQ.Ab8RN6LNvjPKhwe5_YVP6SzPACWf9nVDKLIaCDwenJcjTlftJA",
-  AUDIO_API_KEY: "AQ.Ab8RN6JJ0atrf9NcSJNUbG7L1Y0W1lwyDmTdz1V6EP0OTH2cww",
+// 役割を分けるため、共通補助キーではなく専用キーを保持する
+import { SECRETS } from './api.js'; 
+ 
+const CONFIG = {   //api.keyから値読み取る
+  SPEECH_API_KEY: SECRETS.SPEECH_API_KEY,   
+  AUDIO_API_KEY: SECRETS.AUDIO_API_KEY,
+ 
 
   // 文字起こし後のテキスト解析に使うモデル
   SPEECH_ANALYSIS_MODEL: "gemini-3.1-flash-lite",
@@ -16,7 +18,7 @@ const CONFIG = {
   PATTERN_CONFIDENCE_THRESHOLD: 0.7,
   SAFETY_CONFIDENCE_THRESHOLD: 0.82,
 };
-
+console.log("Speech API Key:", CONFIG.SPEECH_API_KEY);
 function getElement(id) {
   return document.getElementById(id);
 }
