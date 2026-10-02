@@ -202,6 +202,15 @@ test('Zig attack availability remains visible in both unavailable and ready stat
   assert.equal(attackReady.hidden, false);
 });
 
+test('Zig attack detection supports nested payloads and side-on impact axes', () => {
+  const a = app('battle.html');
+  a.run('let testNow = 0; Date.now = () => testNow; startZigAttackDetection();');
+  a.run("testNow = 1500; handleZigSimData(JSON.stringify({ sensordata: { accel: { y: -1.2 }, gyro: { x: -0.7 }, gravity: { y: 1.0 } } }));");
+  const attackReady = a.elements.get('attack-ready');
+  assert.equal(attackReady.innerText, '攻撃不可');
+  assert.equal(attackReady.hidden, false);
+});
+
 test('result page renders stored battle result details', () => {
   const r = app('result.html');
   r.state.set('metsuResultData', JSON.stringify({

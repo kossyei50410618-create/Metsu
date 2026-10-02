@@ -416,5 +416,6 @@ function destroyMonster() {
       return;
     }
 
-  setTimeout(() => showReplayScreen(), MONSTER_DEFEAT_EFFECT_MS);
+    setTimeout(() => showReplayScreen(), MONSTER_DEFEAT_EFFECT_MS);
+  });
 }
