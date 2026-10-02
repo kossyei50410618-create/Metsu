@@ -139,6 +139,11 @@ async function analyzeAudioFeatures(audioStats) {
   return analysis.replace(/\*\*/g, '');
 }
 
+window.generateResponse = generateResponse;
+window.analyzeSpeechText = analyzeSpeechText;
+window.analyzeAudioFeatures = analyzeAudioFeatures;
+window.shouldAnalyzeAudioFeatures = shouldAnalyzeAudioFeatures;
+
 function normalizeSpeechTranscript(transcript) {
   if (typeof transcript !== 'string') return '';
   return transcript.replace(/\s+/g, '');
