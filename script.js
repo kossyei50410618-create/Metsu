@@ -1,10 +1,9 @@
 // 役割を分けるため、共通補助キーではなく専用キーを保持する
-import { SECRETS } from './api.js'; 
- 
+import { SECRETS } from './api.js';
+
 const CONFIG = {   //api.keyから値読み取る
-  SPEECH_API_KEY: SECRETS.SPEECH_API_KEY,   
+  SPEECH_API_KEY: SECRETS.SPEECH_API_KEY,
   AUDIO_API_KEY: SECRETS.AUDIO_API_KEY,
- 
 
   // 文字起こし後のテキスト解析に使うモデル
   SPEECH_ANALYSIS_MODEL: "gemini-3.1-flash-lite",
@@ -17,7 +16,104 @@ const CONFIG = {   //api.keyから値読み取る
   STATE_CONFIDENCE_THRESHOLD: 0.7,
   PATTERN_CONFIDENCE_THRESHOLD: 0.7,
   SAFETY_CONFIDENCE_THRESHOLD: 0.82,
+
+  // 【追加】音声認識の精度向上用の設定
+  CONFIRM_MODE: 'uncertain',  // 認識結果の確認画面: 'always'=毎回 / 'uncertain'=自信が低いときだけ / 'never'=出さない
+  CONFIRM_CONFIDENCE: 0.8,    // これ未満（または信頼度不明）のとき確認画面を出す
+  MIN_SPEECH_VOLUME: 0.02,    // 録音中の最大音量がこれ未満なら「声が小さい／雑音」として聞き返す
+  USE_ON_DEVICE_BIASING: true, // 対応ブラウザでは端末内認識＋単語ブーストを使う
+  SILENCE_END_MS: 1800,       // 最後の発話からこの時間が経ったら認識を終了
+  HARD_TIMEOUT_MS: 20000,     // 認識全体の上限時間
+  MAX_ALTERNATIVES: 5,        // 取得する認識候補の数
 };
+
+// 【追加】Gemini を使わない補正用データ
+// 認識候補の中から優先して選びたい単語（ストレス・悩みに関する語彙）
+const EXPECTED_KEYWORDS = [
+  '仕事', '上司', '部下', '同僚', '会社', '残業', '給料', 'お金', '家族', '親', '子供',
+  '友達', '恋人', '健康', '病気', '睡眠', '勉強', '試験', '時間', 'スマホ', '将来',
+  'むかつく', 'ムカつく', 'イライラ', '腹が立つ', '疲れた', '不安', '悩み', '怒り',
+];
+
+// よくある誤認識の置き換え表（「誤って認識されやすい語」: 「正しい語」）
+// 実際に起きた誤認識を見つけるたびに、ここへ追加してください
+const CORRECTION_DICT = {
+  // 例: 'じょうし': '上司',
+  // 例: 'ざんぎょ': '残業',
+};
+
+// ==============================
+// 補正辞書（手書き＋学習）
+// ・CORRECTION_DICT: 自分で書く置き換え表
+// ・学習辞書: 確認画面でユーザーが直した内容を localStorage に保存して自動で使う
+// ==============================
+const LEARNED_DICT_KEY = 'speechLearnedCorrections';
+
+function loadLearnedDict() {
+  try {
+    return JSON.parse(localStorage.getItem(LEARNED_DICT_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveLearnedDict(dict) {
+  try {
+    // 肥大化を防ぐため新しい200件までに制限
+    const entries = Object.entries(dict).slice(-200);
+    localStorage.setItem(LEARNED_DICT_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch (e) { /* 保存できなくても動作は続ける */ }
+}
+
+function getCorrectionDict() {
+  return { ...CORRECTION_DICT, ...loadLearnedDict() };
+}
+
+function applyCorrectionDict(text) {
+  let result = text;
+  for (const [wrong, right] of Object.entries(getCorrectionDict())) {
+    if (wrong && result.includes(wrong)) result = result.split(wrong).join(right);
+  }
+  return result;
+}
+
+// 「認識結果 → ユーザーが直した文」の差分から、置き換えペアを学習する
+function learnCorrection(original, confirmed) {
+  const a = normalizeSpeechTranscript(original);
+  const b = normalizeSpeechTranscript(confirmed);
+  if (!a || !b || a === b) return;
+
+  // 先頭と末尾の共通部分を除き、違う部分だけを取り出す
+  let p = 0;
+  while (p < a.length && p < b.length && a[p] === b[p]) p++;
+  let q = 0;
+  while (q < a.length - p && q < b.length - p && a[a.length - 1 - q] === b[b.length - 1 - q]) q++;
+
+  const wrong = a.slice(p, a.length - q);
+  const right = b.slice(p, b.length - q);
+
+  // 短すぎる（誤爆しやすい）／長すぎる（文全体の書き換え）ものは学習しない
+  if (wrong.length < 2 || wrong.length > 10 || right.length < 1 || right.length > 10) return;
+
+  const dict = loadLearnedDict();
+  delete dict[wrong]; // 新しいものを末尾に
+  dict[wrong] = right;
+  saveLearnedDict(dict);
+}
+
+// 単語ブースト用のリスト（期待語彙＋学習した正しい語）
+function getBiasPhrases() {
+  const map = new Map();
+  EXPECTED_KEYWORDS.forEach((w) => map.set(w, 3.0));
+  Object.values(getCorrectionDict()).forEach((w) => map.set(w, 5.0));
+  return Array.from(map.entries());
+}
+
+// 「えーっと」「あのー」など、はっきりしたフィラーを取り除く
+// （「あの人」などを壊さないよう、伸ばす形・明確な形だけを対象にする）
+function removeFillers(text) {
+  return text.replace(/(えーっと|えーと|えっと|あのー+|そのー+|うーん|んー+)/g, '');
+}
 
 function getElement(id) {
   return document.getElementById(id);
@@ -39,7 +135,7 @@ async function generateResponse(prompt, userMessage, options = {}) {
     model = CONFIG.SPEECH_ANALYSIS_MODEL,
     temperature = 0.7,
     maxOutputTokens = 800,
-    apiKey = CONFIG.GEMINI_API_KEY,
+    apiKey = CONFIG.SPEECH_API_KEY,   // 【修正】未定義の GEMINI_API_KEY をやめる
   } = options;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
@@ -88,7 +184,7 @@ async function generateResponse(prompt, userMessage, options = {}) {
 }
 
 async function analyzeSpeechText(transcript) {
-  const apiKey = CONFIG.SPEECH_API_KEY || CONFIG.GEMINI_API_KEY;
+  const apiKey = CONFIG.SPEECH_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な SPEECH_API_KEY を設定してください。");
 
   const prompt = `あなたはユーザーのストレスや怒りの音声入力を解析し、分類エンジンに渡すための要約を生成する専門AIです。
@@ -100,8 +196,9 @@ async function analyzeSpeechText(transcript) {
 文の途中で止めたり、最後の語を省略したりせず、必ず「。」または「！」で終えること。`;
   const userMessage = `以下の発話を解析してください：\n${transcript}`;
 
-  return await generateResponse(prompt, userMessage, {
-    model: CONFIG.SPEECH_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL,
+  // 【修正】到達しないコードを直し、analysis を正しく受け取る
+  const analysis = await generateResponse(prompt, userMessage, {
+    model: CONFIG.SPEECH_ANALYSIS_MODEL,
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 400,
@@ -118,7 +215,7 @@ function shouldAnalyzeAudioFeatures(audioStats) {
 async function analyzeAudioFeatures(audioStats) {
   if (!shouldAnalyzeAudioFeatures(audioStats)) return '';
 
-  const apiKey = CONFIG.AUDIO_API_KEY || CONFIG.GEMINI_API_KEY;
+  const apiKey = CONFIG.AUDIO_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な AUDIO_API_KEY を設定してください。");
 
   const prompt = `あなたは音の大きさ・周波数・抑揚から話者の状態を分析するAIです。
@@ -156,7 +253,10 @@ function isSpeechRecognitionSupported() {
 async function requestMicrophonePermission() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // 【修正】mic.js と同じノイズ抑制設定で権限を取得する
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: window.MIC_AUDIO_CONSTRAINTS || true,
+    });
     stream.getTracks().forEach((track) => track.stop());
     return true;
   } catch (error) {
@@ -164,82 +264,298 @@ async function requestMicrophonePermission() {
   }
 }
 
-async function listen() {
+// ==============================
+// 端末内認識＋単語ブースト（対応ブラウザのみ）
+// 使えない場合は false を返し、通常のクラウド認識にフォールバックする
+// ==============================
+async function setupBiasing(SR, recognition) {
+  if (!CONFIG.USE_ON_DEVICE_BIASING) return false;
+  try {
+    if (typeof SR.available !== 'function') return false;
+    if (typeof SpeechRecognitionPhrase === 'undefined') return false;
+    if (!('phrases' in recognition) || !('processLocally' in recognition)) return false;
+
+    const options = { langs: ['ja-JP'], processLocally: true };
+    const availability = await SR.available(options);
+
+    // まだ言語パックが無い場合は、次回以降のために裏でインストールだけ始める
+    if (
+      (availability === 'downloadable' || availability === 'after-download') &&
+      typeof SR.install === 'function'
+    ) {
+      SR.install(options).catch(() => { });
+      return false;
+    }
+    if (availability !== 'available') return false;
+
+    recognition.processLocally = true;
+    recognition.phrases = getBiasPhrases().map(
+      ([phrase, boost]) => new SpeechRecognitionPhrase(phrase, boost)
+    );
+    return true;
+  } catch (e) {
+    console.warn('単語ブーストを使えませんでした（通常の認識を使います）:', e);
+    return false;
+  }
+}
+
+// ==============================
+// 音声認識（改良版）
+// ・候補を複数取得
+// ・話し終わるまで待つ（言いよどみで切れない）
+// ・対応ブラウザでは端末内認識＋単語ブースト
+// 戻り値: { segments: [[{text, confidence}, ...], ...], interim: string }
+//   segments は「確定した区間ごとの候補リスト」
+// ==============================
+async function listen(allowBiasing = true, onInterim = null) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    throw new Error("このブラウザは音声認識に対応していません。Chrome または Edge をお試しください。");
+  }
+
+  const recognition = new SR();
+  recognition.lang = "ja-JP";
+  recognition.interimResults = true;
+  recognition.continuous = true;                         // 言いよどんでも切れない
+  recognition.maxAlternatives = CONFIG.MAX_ALTERNATIVES; // 候補を複数取得
+
+  const biased = allowBiasing ? await setupBiasing(SR, recognition) : false;
+
   return new Promise((resolve, reject) => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      reject(new Error("このブラウザは音声認識に対応していません。Chrome または Edge をお試しください。"));
-      return;
+    const finalSegments = [];
+    let interimText = "";
+    let resolved = false;
+    let silenceTimer = null;
+    let hardTimeoutId = null;
+    let stopFallbackId = null;
+
+    function clearTimers() {
+      clearTimeout(silenceTimer);
+      clearTimeout(hardTimeoutId);
+      clearTimeout(stopFallbackId);
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 1;
+    // 結果を返して終了
+    function finish() {
+      if (resolved) return;
+      resolved = true;
+      clearTimers();
+      try { recognition.stop(); } catch (e) { }
+      window.stopMicVolumeCollection();
 
-    let finalTranscript = "";
-    let resolved = false;
-    let timeoutId = null;
+      // 確定しなかった途中結果が残っていれば、最後の区間として使う
+      if (interimText) {
+        finalSegments.push([{ text: interimText, confidence: 0 }]);
+        interimText = "";
+      }
+      resolve({ segments: finalSegments, interim: "" });
+    }
+
+    function fail(err) {
+      if (resolved) return;
+      resolved = true;
+      clearTimers();
+      try { recognition.stop(); } catch (e) { }
+      window.stopMicVolumeCollection();
+      reject(err);
+    }
+
+    // 認識を止める。最後の確定結果が届くのを待ってから onend で finish する。
+    // 届かない場合に備えて 1.5 秒後に強制終了する。
+    function requestStop() {
+      if (resolved) return;
+      try { recognition.stop(); } catch (e) { }
+      clearTimeout(stopFallbackId);
+      stopFallbackId = setTimeout(finish, 1500);
+    }
+
+    // 話している間は終了を先延ばしにする
+    function armSilenceTimer() {
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(requestStop, CONFIG.SILENCE_END_MS);
+    }
 
     recognition.onstart = () => {
       window.startMicVolumeCollection();
     };
 
     recognition.onresult = (event) => {
-      const lastResult = event.results[event.results.length - 1];
-      if (lastResult.isFinal) {
-        finalTranscript = lastResult[0].transcript;
-        cleanup();
-        resolve(finalTranscript);
+      interimText = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          const candidates = Array.from(result).map((alt) => ({
+            text: alt.transcript,
+            confidence: alt.confidence,
+          }));
+          finalSegments.push(candidates);
+        } else {
+          interimText += result[0].transcript;
+        }
       }
+      // 話している最中に、聞き取れている内容を画面に出す（間違いにすぐ気づける）
+      if (onInterim) {
+        try { onInterim(finalSegments.map((c) => c[0].text).join('') + interimText); } catch (e) { }
+      }
+      armSilenceTimer();
     };
 
     recognition.onerror = (event) => {
-      window.stopMicVolumeCollection();
-      cleanup();
-      if (event.error === "no-speech" || event.error === "aborted") {
-        resolve("");
-      } else {
-        reject(new Error(`音声認識エラー: ${event.error}`));
-      }
-    };
-
-    recognition.onend = () => {
-      window.stopMicVolumeCollection();
-      if (!resolved) {
-        cleanup();
-        resolve(finalTranscript || "");
-      }
-    };
-
-    function cleanup() {
-      resolved = true;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-    }
-
-    timeoutId = setTimeout(() => {
-      if (!resolved) {
-        try { recognition.stop(); } catch (e) { }
+      // 端末内認識／単語ブーストが使えなかった場合は、通常の認識でやり直す
+      if (
+        biased &&
+        ['language-not-supported', 'phrases-not-supported', 'service-not-allowed'].includes(event.error)
+      ) {
+        if (resolved) return;
+        resolved = true;
+        clearTimers();
         window.stopMicVolumeCollection();
-        cleanup();
-        if (finalTranscript) {
-          resolve(finalTranscript);
-        } else {
-          reject(new Error("音声認識がタイムアウトしました。短く話してください。"));
-        }
+        resolve(listen(false, onInterim));
+        return;
       }
-    }, 10000);
+      if (event.error === "no-speech" || event.error === "aborted") {
+        finish();
+      } else {
+        fail(new Error(`音声認識エラー: ${event.error}`));
+      }
+    };
+
+    recognition.onend = () => finish();
+
+    hardTimeoutId = setTimeout(requestStop, CONFIG.HARD_TIMEOUT_MS);
 
     try {
       recognition.start();
     } catch (e) {
-      cleanup();
-      reject(new Error(`音声認識の開始に失敗: ${e.message}`));
+      fail(new Error(`音声認識の開始に失敗: ${e.message}`));
     }
+  });
+}
+
+// ==============================
+// 誤認識の補正（Gemini は使わず、端末内だけで行う）
+// ・辞書（手書き＋学習）を各候補に適用
+// ・各区間の候補から、信頼度＋期待語彙の一致で最良のものを選ぶ
+// 戻り値: { text, confidence(null=不明), corrected }
+// ==============================
+function correctTranscript(segments) {
+  let corrected = false;
+  const confidences = [];
+
+  const picked = segments.map((cands) => {
+    let bestText = applyCorrectionDict(cands[0].text);
+    let bestConfidence = cands[0].confidence || 0;
+    let bestScore = -Infinity;
+
+    cands.forEach((c, rank) => {
+      const fixedText = applyCorrectionDict(c.text);
+      const conf = c.confidence || 0;
+      const keywordHits = EXPECTED_KEYWORDS.filter((w) => fixedText.includes(w)).length;
+      // 信頼度に、期待語彙の一致ボーナスを足す。順位が下がるほど少し減点
+      const score = conf + keywordHits * 0.15 - rank * 0.01;
+      if (score > bestScore) {
+        bestScore = score;
+        bestText = fixedText;
+        bestConfidence = conf;
+        // 辞書で直った、または第1候補以外を期待語彙つきで選んだ場合は「補正した」
+        if (fixedText !== c.text) corrected = true;
+        if (rank > 0 && keywordHits > 0) corrected = true;
+      }
+    });
+
+    confidences.push(bestConfidence);
+    return bestText;
+  });
+
+  const text = picked.join('');
+  if (!text) return { text: '', confidence: null, corrected: false };
+
+  // ブラウザによっては confidence が常に 0 になるため、その場合は「不明」として扱う
+  const hasConfidence = confidences.some((v) => v > 0);
+  const avgConfidence = hasConfidence
+    ? confidences.reduce((a, b) => a + b, 0) / confidences.length
+    : null;
+
+  return { text, confidence: avgConfidence, corrected };
+}
+
+// 確認画面に出す「もしかして」候補（最大 MAX_ALTERNATIVES 件）を作る
+function buildAlternatives(segments, best) {
+  const list = [best];
+  const maxAlt = Math.max(...segments.map((c) => c.length));
+  for (let k = 0; k < maxAlt; k++) {
+    const joined = segments.map((c) => (c[k] || c[0]).text).join('');
+    const text = normalizeSpeechTranscript(removeFillers(applyCorrectionDict(joined)));
+    if (text && !list.includes(text)) list.push(text);
+  }
+  return list.slice(0, CONFIG.MAX_ALTERNATIVES);
+}
+
+// ==============================
+// 認識結果の確認画面
+// 候補をタップして選ぶ／入力欄で直接直す／やり直す
+// 戻り値: 確定した文字列 ／ やり直しなら null
+// ==============================
+function confirmTranscript(anchor, options) {
+  return new Promise((resolve) => {
+    if (!anchor) { resolve(options[0]); return; }
+
+    const panel = document.createElement('div');
+    panel.id = 'transcript-confirm';
+    panel.setAttribute('role', 'group');
+    panel.setAttribute('aria-label', '認識結果の確認');
+    panel.style.cssText = 'margin:12px 0;padding:12px;border:1px solid #888;border-radius:8px;';
+
+    const label = document.createElement('p');
+    label.textContent = 'こう聞こえました。違う場合は候補を選ぶか、直接直してください。';
+    label.style.margin = '0 0 8px';
+    panel.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = options[0];
+    input.style.cssText = 'width:100%;box-sizing:border-box;padding:8px;margin-bottom:8px;';
+    input.setAttribute('aria-label', '認識結果（編集できます）');
+
+    if (options.length > 1) {
+      const chips = document.createElement('div');
+      chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;';
+      options.forEach((opt) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.textContent = opt;
+        chip.style.cssText = 'padding:6px 10px;border-radius:16px;cursor:pointer;';
+        chip.addEventListener('click', () => { input.value = opt; input.focus(); });
+        chips.appendChild(chip);
+      });
+      panel.appendChild(chips);
+    }
+    panel.appendChild(input);
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;';
+
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.textContent = 'この内容で決定';
+    const retryBtn = document.createElement('button');
+    retryBtn.type = 'button';
+    retryBtn.textContent = 'やり直す';
+    actions.append(okBtn, retryBtn);
+    panel.appendChild(actions);
+
+    function done(value) {
+      panel.remove();
+      resolve(value);
+    }
+    okBtn.addEventListener('click', () => done(input.value.trim() || null));
+    retryBtn.addEventListener('click', () => done(null));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); done(input.value.trim() || null); }
+    });
+
+    anchor.insertAdjacentElement('afterend', panel);
+    input.focus();
   });
 }
 
@@ -270,13 +586,66 @@ async function startRecognition() {
   status.innerText = '録音中... 話してください。';
 
   try {
-    const transcript = await listen();
-    const normalizedTranscript = normalizeSpeechTranscript(transcript);
+    const recognized = await listen(true, (heard) => {
+      status.innerText = `録音中... 「${heard}」`;
+    });
     window.stopMicVolumeCollection();
-    if (!normalizedTranscript) {
-      status.innerText = '音声入力がキャンセルされました。';
+
+    // 音響特徴量はマイクを止める前に取得しておく
+    const audioStats = typeof window.getMicSessionStats === 'function'
+      ? window.getMicSessionStats()
+      : null;
+
+    const segments = recognized.segments.filter((cands) => cands.length > 0 && cands[0].text);
+    if (segments.length === 0) {
+      status.innerText = '音声が聞き取れませんでした。もう一度お話しください。';
       updatePipelineStage('音声入力がキャンセルされました。');
       return;
+    }
+
+    // 【追加】声が小さすぎる／雑音だけの場合は、誤認識を避けるため聞き返す
+    if (
+      audioStats &&
+      Number.isFinite(audioStats.maxVolume) &&
+      audioStats.maxVolume < CONFIG.MIN_SPEECH_VOLUME
+    ) {
+      status.innerText = '声がよく聞き取れませんでした。マイクに近づいて、もう少し大きな声でお話しください。';
+      updatePipelineStage('音声入力がキャンセルされました。');
+      return;
+    }
+
+    // 誤認識の補正（辞書＋候補の選び直し）
+    updatePipelineStage('ステップ 1.5/4: 認識結果を確認しています');
+    const result = correctTranscript(segments);
+    let normalizedTranscript = normalizeSpeechTranscript(removeFillers(result.text));
+
+    if (!normalizedTranscript) {
+      status.innerText = '音声が聞き取れませんでした。もう一度お話しください。';
+      updatePipelineStage('音声入力がキャンセルされました。');
+      return;
+    }
+
+    // 【追加】自信が低い（または信頼度不明）ときは、確認画面で選ぶ／直す
+    const needConfirm =
+      CONFIG.CONFIRM_MODE === 'always' ||
+      (CONFIG.CONFIRM_MODE === 'uncertain' &&
+        (result.confidence === null || result.confidence < CONFIG.CONFIRM_CONFIDENCE));
+
+    if (needConfirm) {
+      updatePipelineStage('ステップ 1.8/4: 認識結果を確認してください');
+      status.innerText = '聞き取り結果を確認してください。';
+      const options = buildAlternatives(segments, normalizedTranscript);
+      const confirmed = await confirmTranscript(status, options);
+
+      if (confirmed === null) {
+        status.innerText = 'やり直す場合は、もう一度音声ボタンを押してください。';
+        updatePipelineStage('音声入力がキャンセルされました。');
+        return;
+      }
+
+      // 直した内容を学習して、次回以降の補正に使う
+      learnCorrection(normalizedTranscript, confirmed);
+      normalizedTranscript = normalizeSpeechTranscript(confirmed);
     }
 
     stopMicMeter();
@@ -296,9 +665,6 @@ async function startRecognition() {
 
     let audioAnalysis = '';
     try {
-      const audioStats = typeof window.getMicSessionStats === 'function'
-        ? window.getMicSessionStats()
-        : null;
       if (shouldAnalyzeAudioFeatures(audioStats)) {
         audioAnalysis = await analyzeAudioFeatures(audioStats);
       }

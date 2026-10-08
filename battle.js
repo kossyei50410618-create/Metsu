@@ -11,7 +11,7 @@ let totalDamageDealt = 0;
 let maxSingleDamage = 0;
 
 const RESULT_DATA_KEY = 'metsuResultData';
-const MONSTER_DEFEAT_EFFECT_MS = 850;
+const MONSTER_DEFEAT_EFFECT_MS = 2200;
 
 // Zigセンサー入力で攻撃を有効化・無効化するための閾値定義。
 const ZIG_WS_PORT = 8765;
@@ -363,8 +363,21 @@ function playMonsterDissolve(onComplete) {
   }
 
   const monsterRect = monsterEl.getBoundingClientRect();
-  const particleColor = (monsters[monsterType] || monsters.normal).shadow;
-  const particleCount = 72;
+  const monsterImg = getElement('monster-img');
+  const imageSrc = monsterImg && (monsterImg.currentSrc || monsterImg.src)
+    ? (monsterImg.currentSrc || monsterImg.src)
+    : 'assets/monster-fallback.svg';
+  const imageWidth = monsterImg && monsterImg.naturalWidth ? monsterImg.naturalWidth : monsterRect.width;
+  const imageHeight = monsterImg && monsterImg.naturalHeight ? monsterImg.naturalHeight : monsterRect.height;
+  const viewportWidth = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || monsterRect.width;
+  const viewportHeight = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || monsterRect.height;
+  const columns = 18;
+  const rows = 24;
+  const scale = Math.max(monsterRect.width / imageWidth, monsterRect.height / imageHeight);
+  const backgroundWidth = imageWidth * scale;
+  const backgroundHeight = imageHeight * scale;
+  const cropLeft = (backgroundWidth - monsterRect.width) / 2;
+  const cropTop = (backgroundHeight - monsterRect.height) / 2;
 
   if (monsterEl.classList && typeof monsterEl.classList.add === 'function') {
     monsterEl.classList.add('monster-dissolving');
@@ -374,42 +387,145 @@ function playMonsterDissolve(onComplete) {
   monsterEl.setAttribute('aria-hidden', 'true');
   monsterEl.disabled = true;
 
-  for (let i = 0; i < particleCount; i++) {
-    const particle = document.createElement('div');
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 100 + Math.random() * 150;
-    const burstX = Math.cos(angle) * distance;
-    const burstY = Math.sin(angle) * distance;
-    const finalX = burstX * (1.15 + Math.random() * 0.25);
-    const finalY = burstY - 150 - Math.random() * 130;
-    const size = Math.random() * 2 + 1.5;
-    particle.className = 'dissolve-particle';
-    particle.style.left = `${monsterRect.left + monsterRect.width / 2}px`;
-    particle.style.top = `${monsterRect.top + monsterRect.height / 2}px`;
-    particle.style.width = `${size}px`;
-    particle.style.height = `${size}px`;
-    particle.style.background = particleColor;
-    const particleStyle = {
-      '--burst-x': `${burstX}px`,
-      '--burst-y': `${burstY}px`,
-      '--final-x': `${finalX}px`,
-      '--final-y': `${finalY}px`,
-      '--particle-delay': `${Math.random() * 180}ms`,
-    };
-    Object.entries(particleStyle).forEach(([property, value]) => {
-      if (typeof particle.style.setProperty === 'function') {
-        particle.style.setProperty(property, value);
-      } else {
-        particle.style[property] = value;
-      }
-    });
-    document.body.appendChild(particle);
-    setTimeout(() => particle.remove(), 1050);
+  const shardWidth = monsterRect.width / columns;
+  const shardHeight = monsterRect.height / rows;
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const x = column * shardWidth;
+      const y = row * shardHeight;
+      const width = Math.min(shardWidth, monsterRect.width - x);
+      const height = Math.min(shardHeight, monsterRect.height - y);
+      const shard = document.createElement('div');
+      shard.className = 'image-shard';
+      shard.style.left = `${monsterRect.left + x}px`;
+      shard.style.top = `${monsterRect.top + y}px`;
+      shard.style.width = `${width}px`;
+      shard.style.height = `${height}px`;
+      shard.style.backgroundImage = `url("${imageSrc}")`;
+      shard.style.backgroundSize = `${backgroundWidth}px ${backgroundHeight}px`;
+      shard.style.backgroundPosition = `${-(cropLeft + x)}px ${-(cropTop + y)}px`;
+
+      const targetX = Math.random() * Math.max(0, viewportWidth - width);
+      const targetY = Math.random() * Math.max(0, viewportHeight - height);
+      const shardStyle = {
+        '--scatter-x': `${targetX - (monsterRect.left + x)}px`,
+        '--scatter-y': `${targetY - (monsterRect.top + y)}px`,
+        '--shard-rotation': `${Math.random() * 360 - 180}deg`,
+        '--shard-delay': `${Math.random() * 120}ms`,
+      };
+      Object.entries(shardStyle).forEach(([property, value]) => {
+        if (typeof shard.style.setProperty === 'function') {
+          shard.style.setProperty(property, value);
+        } else {
+          shard.style[property] = value;
+        }
+      });
+      document.body.appendChild(shard);
+      setTimeout(() => shard.remove(), 1100);
+    }
   }
 
   setTimeout(() => {
     onComplete();
   }, 900);
+}
+
+function playScreenCrack() {
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+  const monsterRect = getElement('monster')?.getBoundingClientRect();
+  const centerX = monsterRect ? monsterRect.left + monsterRect.width / 2 : viewportWidth / 2;
+  const centerY = monsterRect ? monsterRect.top + monsterRect.height / 2 : viewportHeight / 2;
+  const svgNamespace = 'http://www.w3.org/2000/svg';
+  const overlay = document.createElementNS(svgNamespace, 'svg');
+  overlay.classList.add('screen-crack-overlay');
+  overlay.setAttribute('viewBox', `0 0 ${viewportWidth} ${viewportHeight}`);
+  overlay.setAttribute('preserveAspectRatio', 'none');
+  overlay.setAttribute('aria-hidden', 'true');
+
+  const addCrack = (points, isBranch = false) => {
+    const path = document.createElementNS(svgNamespace, 'path');
+    path.classList.add('screen-crack');
+    if (isBranch) path.classList.add('screen-crack-branch');
+    path.setAttribute('d', points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`).join(' '));
+    overlay.appendChild(path);
+  };
+
+  const mainCrackCount = 16;
+  for (let i = 0; i < mainCrackCount; i++) {
+    const angle = (Math.PI * 2 * i / mainCrackCount) + (Math.random() - 0.5) * 0.24;
+    const directionX = Math.cos(angle);
+    const directionY = Math.sin(angle);
+    const edgeDistance = Math.min(
+      directionX > 0 ? (viewportWidth - centerX) / directionX : directionX < 0 ? -centerX / directionX : Infinity,
+      directionY > 0 ? (viewportHeight - centerY) / directionY : directionY < 0 ? -centerY / directionY : Infinity,
+    );
+    const segmentCount = 7;
+    const points = [[centerX, centerY]];
+    for (let segment = 1; segment <= segmentCount; segment++) {
+      const distance = edgeDistance * segment / segmentCount;
+      const jitter = segment === segmentCount ? 0 : (Math.random() - 0.5) * 34;
+      points.push([
+        centerX + directionX * distance - directionY * jitter,
+        centerY + directionY * distance + directionX * jitter,
+      ]);
+    }
+    addCrack(points);
+
+    const branchSegment = 2 + Math.floor(Math.random() * 4);
+    const branchOrigin = points[branchSegment];
+    const branchAngle = angle + (Math.random() < 0.5 ? -1 : 1) * (0.48 + Math.random() * 0.7);
+    const branchLength = 70 + Math.random() * Math.max(viewportWidth, viewportHeight) * 0.36;
+    const branchPoints = [branchOrigin];
+    for (let segment = 1; segment <= 3; segment++) {
+      const distance = branchLength * segment / 3;
+      const jitter = segment === 3 ? 0 : (Math.random() - 0.5) * 24;
+      branchPoints.push([
+        branchOrigin[0] + Math.cos(branchAngle) * distance - Math.sin(branchAngle) * jitter,
+        branchOrigin[1] + Math.sin(branchAngle) * distance + Math.cos(branchAngle) * jitter,
+      ]);
+    }
+    addCrack(branchPoints, true);
+  }
+
+  document.body.appendChild(overlay);
+  setTimeout(() => overlay.remove(), 1800);
+}
+
+function playDefeatCelebration(hasNext) {
+  playScreenCrack();
+  const celebration = document.createElement('div');
+  celebration.className = 'defeat-celebration';
+  celebration.setAttribute('aria-hidden', 'true');
+
+  const banner = document.createElement('div');
+  banner.className = 'defeat-banner';
+  const title = document.createElement('strong');
+  title.textContent = 'FINISH';
+  const subtitle = document.createElement('span');
+  subtitle.textContent = hasNext ? 'NEXT BATTLE' : 'MISSION COMPLETE';
+  banner.appendChild(title);
+  banner.appendChild(subtitle);
+  document.body.appendChild(celebration);
+  document.body.appendChild(banner);
+
+  const sparkleCount = 48;
+  const sparkleColors = ['var(--cyan)', 'var(--purple)', 'var(--monster-accent)'];
+  for (let i = 0; i < sparkleCount; i++) {
+    const sparkle = document.createElement('span');
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.max(window.innerWidth || 0, window.innerHeight || 0) * (0.35 + Math.random() * 0.65);
+    sparkle.className = 'victory-spark';
+    sparkle.style.setProperty('--spark-x', `${Math.cos(angle) * distance}px`);
+    sparkle.style.setProperty('--spark-y', `${Math.sin(angle) * distance}px`);
+    sparkle.style.setProperty('--spark-spin', `${Math.random() * 540 - 270}deg`);
+    sparkle.style.setProperty('--spark-delay', `${Math.random() * 180}ms`);
+    sparkle.style.setProperty('--spark-color', sparkleColors[Math.floor(Math.random() * sparkleColors.length)]);
+    document.body.appendChild(sparkle);
+    setTimeout(() => sparkle.remove(), MONSTER_DEFEAT_EFFECT_MS);
+  }
+
+  setTimeout(() => celebration.remove(), MONSTER_DEFEAT_EFFECT_MS);
 }
 
 // 討伐にかかった時間や攻撃統計、音量・トーンをまとめて結果画面に渡すための保存データを作る関数。
@@ -453,6 +569,8 @@ function showReplayScreen() {
 function destroyMonster() {
   finalizeBattleResult();
   stopZigAttackDetection();
+  const hasNext = typeof hasNextMonster === 'function' && hasNextMonster();
+  playDefeatCelebration(hasNext);
   const monsterEl = getElement('monster');
   if (monsterEl) {
     monsterEl.setAttribute('data-state', 'defeated');
@@ -460,7 +578,7 @@ function destroyMonster() {
   }
 
   playMonsterDissolve(() => {
-    if (typeof hasNextMonster === 'function' && hasNextMonster()) {
+    if (hasNext) {
       showAttackFeedback('撃破！ 次の敵が現れた...');
       setTimeout(async () => {
         await spawnNextMonster();
@@ -468,6 +586,6 @@ function destroyMonster() {
       return;
     }
 
-    setTimeout(() => showReplayScreen(), MONSTER_DEFEAT_EFFECT_MS);
+    setTimeout(() => showReplayScreen(), MONSTER_DEFEAT_EFFECT_MS - 900);
   });
 }
