@@ -11,7 +11,7 @@ function app(page, saved = null) {
   const elements = new Map();
   for (const match of markup.matchAll(/<(\w+)[^>]*\bid="([^"]+)"[^>]*>/g)) {
     const [, tag, id] = match;
-    elements.set(id, {
+    const element = {
       tagName: tag.toUpperCase(), value: '', textContent: '', innerText: '',
       disabled: /\bdisabled\b/.test(match[0]), style: {}, attributes: {}, listeners: {},
       setAttribute(k, v) { this.attributes[k] = String(v); },
@@ -20,7 +20,24 @@ function app(page, saved = null) {
       dispatchEvent(e) { this.listeners[e.type]?.(e); },
       focus() { this.focused = true; },
       getBoundingClientRect() { return { left: 0, top: 0, width: 230, height: 285 }; },
-    });
+    };
+    element.classList = {
+      add(name) {
+        const classes = new Set((element.className || '').split(/\s+/).filter(Boolean));
+        classes.add(name);
+        element.className = [...classes].join(' ');
+      },
+      remove(name) {
+        element.className = (element.className || '')
+          .split(/\s+/)
+          .filter(className => className && className !== name)
+          .join(' ');
+      },
+      contains(name) {
+        return (element.className || '').split(/\s+/).includes(name);
+      },
+    };
+    elements.set(id, element);
   }
   const timers = [];
   const state = new Map(saved ? [['metsuBattleData', JSON.stringify(saved)]] : []);
@@ -175,7 +192,10 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   assert.equal(a.run('monsterQueueIndex'), 1);
   assert.ok(a.run('hp') > 0);
   assert.equal(a.elements.get('monster').attributes['data-state'], undefined);
+  assert.equal(a.elements.get('monster').attributes['aria-hidden'], undefined);
+  assert.equal(a.elements.get('monster').classList.contains('monster-dissolving'), false);
   assert.equal(a.elements.get('monster').disabled, false);
+  assert.equal(a.elements.get('monster-img').src, 'assets/career.png');
   a.run('hp = 1; attackMonster();');
   assert.notEqual(a.context.window.location.href, 'result.html');
   for (const fn of a.timers.splice(0)) await fn();

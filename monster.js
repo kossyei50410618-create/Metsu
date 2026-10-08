@@ -206,6 +206,15 @@ async function renderMonster(category, monsterForm, storedData) {
   const monsterButton = getElement('monster');
   if (monsterButton) {
     monsterButton.removeAttribute('data-state');
+    monsterButton.removeAttribute('aria-hidden');
+    if (monsterButton.classList && typeof monsterButton.classList.remove === 'function') {
+      monsterButton.classList.remove('monster-dissolving');
+    } else {
+      monsterButton.className = (monsterButton.className || '')
+        .split(/\s+/)
+        .filter((className) => className && className !== 'monster-dissolving')
+        .join(' ');
+    }
     monsterButton.disabled = false;
   }
 
