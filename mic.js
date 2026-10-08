@@ -1,11 +1,16 @@
 // 音量判定に使う基準値（現在のコードでは未使用）
 const EX_VOLUME_THRESHOLD = 0.7;
 
-// 「発話が始まった」と判断する音量のしきい値
-const MIC_SPEECH_ONSET_THRESHOLD = 0.01;
+// 【修正】発話の開始と終了でしきい値を分ける（ヒステリシス）
+// 「発話が始まった」と判断する音量のしきい値（やや高め）
+const MIC_SPEECH_ONSET_THRESHOLD = 0.02;
 
-// この回数連続で小さい音量なら「発話終了」と判断する
-const MIC_SILENCE_FRAME_COUNT = 10;
+// 【修正】「発話が終わりかけ（無音）」と判断する音量のしきい値（低め）
+const MIC_SPEECH_OFFSET_THRESHOLD = 0.008;
+
+// 【修正】この回数連続で小さい音量なら「発話終了」と判断する
+// 約60fpsで40フレーム ≒ 0.7秒。言いよどむ人でも途中で切れにくくする
+const MIC_SILENCE_FRAME_COUNT = 40;
 
 // 声の高さ（基本周波数）として調べる最低周波数 [Hz]
 const MIC_MIN_FREQUENCY = 80;
@@ -18,6 +23,15 @@ const MIC_TONE_SILENCE_THRESHOLD = 0.025;
 
 // 声らしい周期性があるかを判断する相関の基準値
 const MIC_AUTOCORRELATION_THRESHOLD = 0.35;
+
+// 【修正】マイク取得時の共通設定（認識側の権限取得でも同じ設定を使う）
+const MIC_AUDIO_CONSTRAINTS = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    channelCount: 1,
+};
+window.MIC_AUDIO_CONSTRAINTS = MIC_AUDIO_CONSTRAINTS;
 
 
 // ==============================
@@ -93,7 +107,7 @@ function calculateMicIntonation(history) {
 
     // 発話と判断できる音量だけを取り出す
     const speechHistory = history.filter(
-        (value) => value > MIC_SPEECH_ONSET_THRESHOLD
+        (value) => value > MIC_SPEECH_OFFSET_THRESHOLD
     );
 
     // データが2個未満なら計算できない
@@ -391,7 +405,7 @@ function updateMicMeter() {
         // まだ発話が始まっていない場合
         if (!micSpeechDetected) {
 
-            // 音量がしきい値以上になったら
+            // 音量が「開始しきい値」以上になったら
             // 「発話開始」と判断
             if (
                 micVolume >=
@@ -411,10 +425,10 @@ function updateMicMeter() {
             micVolumeHistory.push(micVolume);
 
 
-            // 音量がしきい値以下なら無音として扱う
+            // 【修正】音量が「終了しきい値」以下なら無音として扱う
             if (
                 micVolume <=
-                MIC_SPEECH_ONSET_THRESHOLD
+                MIC_SPEECH_OFFSET_THRESHOLD
             ) {
 
                 // 無音フレーム数を増やす
@@ -635,12 +649,14 @@ async function calibrateMic() {
     // 較正中フラグをON
     micCalibrating = true;
 
-    // 較正ボタンを無効化
-    calibrateButton.disabled = true;
+    // 【修正】要素がない場合でも落ちないようにする
+    if (calibrateButton) calibrateButton.disabled = true;
 
     // 画面に較正中であることを表示
-    noiseFloorStatus.textContent =
-        'ノイズフロア: 較正中...静かにしてください';
+    if (noiseFloorStatus) {
+        noiseFloorStatus.textContent =
+            'ノイズフロア: 較正中...静かにしてください';
+    }
 
 
     // 周囲の音量データを保存する配列
@@ -649,6 +665,9 @@ async function calibrateMic() {
 
     // 50msごとに周囲の音を測定
     const sampleInterval = setInterval(() => {
+
+        // マイクが停止されていたら何もしない
+        if (!micAnalyser || !micDataArray) return;
 
         // マイクから現在の音声波形を取得
         micAnalyser.getFloatTimeDomainData(
@@ -691,24 +710,30 @@ async function calibrateMic() {
     clearInterval(sampleInterval);
 
 
-    // 測定した平均値をノイズフロアとして設定
-    // 1.3倍して少し余裕を持たせている
-    micNoiseFloor =
-        (
-            samples.reduce(
-                (sum, sample) => sum + sample,
-                0
-            ) / samples.length
-        ) * 1.3;
+    // 【修正】サンプルが取れた場合のみ更新（0除算でNaNになるのを防ぐ）
+    if (samples.length > 0) {
+
+        // 測定した平均値をノイズフロアとして設定
+        // 1.3倍して少し余裕を持たせている
+        micNoiseFloor =
+            (
+                samples.reduce(
+                    (sum, sample) => sum + sample,
+                    0
+                ) / samples.length
+            ) * 1.3;
 
 
-    // 較正結果を画面に表示
-    noiseFloorStatus.textContent =
-        `ノイズフロア: ${micNoiseFloor.toFixed(4)} (較正済み)`;
+        // 較正結果を画面に表示
+        if (noiseFloorStatus) {
+            noiseFloorStatus.textContent =
+                `ノイズフロア: ${micNoiseFloor.toFixed(4)} (較正済み)`;
+        }
+    }
 
 
     // 較正ボタンを再び有効化
-    calibrateButton.disabled = false;
+    if (calibrateButton) calibrateButton.disabled = false;
 
     // 較正終了
     micCalibrating = false;
@@ -738,10 +763,10 @@ async function initMicMeter() {
 
     try {
 
-        // ブラウザからマイク使用の許可を取得
+        // 【修正】ノイズ抑制などを有効にしてマイク使用の許可を取得
         micStream =
             await navigator.mediaDevices.getUserMedia({
-                audio: true
+                audio: MIC_AUDIO_CONSTRAINTS
             });
 
 
@@ -925,6 +950,16 @@ function stopMicMeter() {
         calibrateButton.disabled = true;
     }
 }
+
+// 他のファイル（音声認識側）から呼べるように公開する
+window.initMicMeter = initMicMeter;
+window.stopMicMeter = stopMicMeter;
+window.calibrateMic = calibrateMic;
+
+// 【追加】録音用に、現在のマイクストリームを取得できるようにする
+window.getMicStream = function () {
+    return micStream;
+};
 
 
 // ==============================
