@@ -45,8 +45,23 @@ function app(page, saved = null) {
     getElementById: (id) => elements.get(id) || null,
     querySelectorAll: (selector) => selector.includes('#input-screen')
       ? [...elements.values()].filter(e => ['BUTTON', 'TEXTAREA', 'INPUT'].includes(e.tagName)) : [],
-    body: { style: {}, appendChild() { } },
-    createElement: () => ({ style: {}, remove() { } }),
+    body: { style: {}, children: [], appendChild(element) { this.children.push(element); } },
+    createElement: () => ({
+      style: { setProperty(name, value) { this[name] = value; } },
+      children: [],
+      appendChild(element) { this.children.push(element); },
+      setAttribute(name, value) { this[name] = String(value); },
+      remove() { },
+    }),
+    createElementNS: (_namespace, tagName) => ({
+      tagName,
+      attributes: {},
+      children: [],
+      classList: { names: [], add(name) { this.names.push(name); } },
+      appendChild(element) { this.children.push(element); },
+      setAttribute(name, value) { this.attributes[name] = String(value); },
+      remove() { },
+    }),
   };
   const context = vm.createContext({
     document, console, navigator: {}, location: { hostname: 'localhost' },
@@ -56,7 +71,7 @@ function app(page, saved = null) {
     alert() { throw Error('Unexpected alert'); },
     fetch() { throw Error('Unexpected network request'); },
   });
-  context.window = { location: { href: page }, addEventListener() { } };
+  context.window = { location: { href: page }, innerWidth: 1280, innerHeight: 800, addEventListener() { } };
   for (const [, source] of markup.matchAll(/<script src="([^"]+)"/g)) {
     // Initialize explicitly below, after all modules are loaded.
     let code = fs.readFileSync(path.join(root, source), 'utf8');
@@ -204,6 +219,51 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   result.elements.get('replay-btn').listeners.click();
   assert.equal(result.context.window.location.href, 'index.html');
   assert.equal(result.state.has('metsuBattleData'), false);
+});
+
+test('defeating a monster scatters image shards across the viewport', async () => {
+  const a = app('battle.html', {
+    rawText: '勉強', category: { key: 'study', label: '勉強', monster: 'study' },
+    queue: [{ key: 'study', label: '勉強', monster: 'study' }],
+    queueIndex: 0, monsterForm: 'normal',
+  });
+  a.elements.get('monster-img').src = 'assets/study.png';
+  a.run("getElement = id => document.getElementById(id); playMonsterDissolve(() => {})");
+
+  const shards = a.context.document.body.children.filter(element => element.className === 'image-shard');
+  assert.equal(shards.length, 18 * 24);
+  assert.ok(shards.every(shard => shard.style.backgroundImage.includes('assets/study.png')));
+  assert.ok(shards.some(shard => parseFloat(shard.style['--scatter-x']) < 0));
+  assert.ok(shards.some(shard => parseFloat(shard.style['--scatter-x']) > 0));
+  assert.ok(shards.some(shard => parseFloat(shard.style['--scatter-y']) < 0));
+  assert.ok(shards.some(shard => parseFloat(shard.style['--scatter-y']) > 0));
+  const targetX = shards.map(shard => parseFloat(shard.style.left) + parseFloat(shard.style['--scatter-x']));
+  const targetY = shards.map(shard => parseFloat(shard.style.top) + parseFloat(shard.style['--scatter-y']));
+  assert.ok(Math.min(...targetX) < 128);
+  assert.ok(Math.max(...targetX) > 1152);
+  assert.ok(Math.min(...targetY) < 80);
+  assert.ok(Math.max(...targetY) > 720);
+});
+
+test('defeat celebration displays a victory banner and bursts of colorful sparks', () => {
+  const a = app('battle.html');
+  a.run("getElement = id => document.getElementById(id); playDefeatCelebration(false)");
+
+  const banner = a.context.document.body.children.find(element => element.className === 'defeat-banner');
+  const title = banner.children.find(element => element.tagName === undefined && element.textContent === 'FINISH');
+  const subtitle = banner.children.find(element => element.textContent === 'MISSION COMPLETE');
+  const sparks = a.context.document.body.children.filter(element => element.className === 'victory-spark');
+  assert.ok(a.context.document.body.children.some(element => element.className === 'defeat-celebration'));
+  const crackOverlay = a.context.document.body.children.find(element => element.classList?.names.includes('screen-crack-overlay'));
+  assert.ok(crackOverlay);
+  assert.ok(crackOverlay.children.length >= 32);
+  assert.ok(crackOverlay.children.every(path => path.attributes.d.startsWith('M ')));
+  assert.equal(title.textContent, 'FINISH');
+  assert.equal(subtitle.textContent, 'MISSION COMPLETE');
+  assert.equal(sparks.length, 48);
+  assert.ok(sparks.every(spark => ['var(--cyan)', 'var(--purple)', 'var(--monster-accent)'].includes(spark.style['--spark-color'])));
+  assert.ok(sparks.some(spark => parseFloat(spark.style['--spark-x']) < 0));
+  assert.ok(sparks.some(spark => parseFloat(spark.style['--spark-x']) > 0));
 });
 
 test('Zig attack availability remains visible in both unavailable and ready states', () => {
