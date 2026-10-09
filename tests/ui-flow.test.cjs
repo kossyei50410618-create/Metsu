@@ -203,6 +203,9 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   assert.equal(a.run('hp'), 0);
   assert.equal(a.run('monsterQueueIndex'), 0);
   assert.equal(a.elements.get('monster').attributes['data-state'], 'defeated');
+  assert.equal(a.context.document.body.children.some(element => element.className === 'defeat-effects-layer'), false);
+  assert.equal(a.context.document.body.children.some(element => element.className === 'image-shard'), false);
+  assert.equal(a.elements.get('monster').classList.contains('monster-dissolving'), false);
   for (const fn of a.timers.splice(0)) await fn();
   assert.equal(a.run('monsterQueueIndex'), 1);
   assert.ok(a.run('hp') > 0);
@@ -212,6 +215,7 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   assert.equal(a.elements.get('monster').disabled, false);
   assert.equal(a.elements.get('monster-img').src, 'assets/career.png');
   a.run('hp = 1; attackMonster();');
+  assert.ok(a.context.document.body.children.some(element => element.className === 'defeat-effects-layer'));
   assert.notEqual(a.context.window.location.href, 'result.html');
   for (const fn of a.timers.splice(0)) await fn();
   assert.equal(a.context.window.location.href, 'result.html');
@@ -228,9 +232,10 @@ test('defeating a monster scatters image shards across the viewport', async () =
     queueIndex: 0, monsterForm: 'normal',
   });
   a.elements.get('monster-img').src = 'assets/study.png';
-  a.run("getElement = id => document.getElementById(id); playMonsterDissolve(() => {})");
+  a.run("getElement = id => document.getElementById(id); const effectsLayer = playDefeatCelebration(); playMonsterDissolve(() => {}, effectsLayer)");
 
-  const shards = a.context.document.body.children.filter(element => element.className === 'image-shard');
+  const effectsLayer = a.context.document.body.children.find(element => element.className === 'defeat-effects-layer');
+  const shards = effectsLayer.children.filter(element => element.className === 'image-shard');
   assert.equal(shards.length, 18 * 24);
   assert.ok(shards.every(shard => shard.style.backgroundImage.includes('assets/study.png')));
   assert.ok(shards.some(shard => parseFloat(shard.style['--scatter-x']) < 0));
@@ -247,14 +252,15 @@ test('defeating a monster scatters image shards across the viewport', async () =
 
 test('defeat celebration displays a victory banner and bursts of colorful sparks', () => {
   const a = app('battle.html');
-  a.run("getElement = id => document.getElementById(id); playDefeatCelebration(false)");
+  a.run("getElement = id => document.getElementById(id); playDefeatCelebration()");
 
-  const banner = a.context.document.body.children.find(element => element.className === 'defeat-banner');
+  const effectsLayer = a.context.document.body.children.find(element => element.className === 'defeat-effects-layer');
+  const banner = effectsLayer.children.find(element => element.className === 'defeat-banner');
   const title = banner.children.find(element => element.tagName === undefined && element.textContent === 'FINISH');
   const subtitle = banner.children.find(element => element.textContent === 'MISSION COMPLETE');
-  const sparks = a.context.document.body.children.filter(element => element.className === 'victory-spark');
-  assert.ok(a.context.document.body.children.some(element => element.className === 'defeat-celebration'));
-  const crackOverlay = a.context.document.body.children.find(element => element.classList?.names.includes('screen-crack-overlay'));
+  const sparks = effectsLayer.children.filter(element => element.className === 'victory-spark');
+  assert.ok(effectsLayer.children.some(element => element.className === 'defeat-celebration'));
+  const crackOverlay = effectsLayer.children.find(element => element.classList?.names.includes('screen-crack-overlay'));
   assert.ok(crackOverlay);
   assert.ok(crackOverlay.children.length >= 32);
   assert.ok(crackOverlay.children.every(path => path.attributes.d.startsWith('M ')));

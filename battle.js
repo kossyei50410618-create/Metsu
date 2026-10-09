@@ -357,73 +357,76 @@ function createParticles() {
   }
 }
 
-function playMonsterDissolve(onComplete) {
+function playMonsterDissolve(onComplete, effectsLayer, showEffects = true) {
   const monsterEl = getElement('monster');
   if (!monsterEl) {
     onComplete();
     return;
   }
 
-  const monsterRect = monsterEl.getBoundingClientRect();
-  const monsterImg = getElement('monster-img');
-  const imageSrc = monsterImg && (monsterImg.currentSrc || monsterImg.src)
-    ? (monsterImg.currentSrc || monsterImg.src)
-    : 'assets/monster-fallback.svg';
-  const imageWidth = monsterImg && monsterImg.naturalWidth ? monsterImg.naturalWidth : monsterRect.width;
-  const imageHeight = monsterImg && monsterImg.naturalHeight ? monsterImg.naturalHeight : monsterRect.height;
-  const viewportWidth = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || monsterRect.width;
-  const viewportHeight = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || monsterRect.height;
-  const columns = 18;
-  const rows = 24;
-  const scale = Math.max(monsterRect.width / imageWidth, monsterRect.height / imageHeight);
-  const backgroundWidth = imageWidth * scale;
-  const backgroundHeight = imageHeight * scale;
-  const cropLeft = (backgroundWidth - monsterRect.width) / 2;
-  const cropTop = (backgroundHeight - monsterRect.height) / 2;
-
-  if (monsterEl.classList && typeof monsterEl.classList.add === 'function') {
-    monsterEl.classList.add('monster-dissolving');
-  } else {
-    monsterEl.className = `${monsterEl.className || ''} monster-dissolving`.trim();
-  }
   monsterEl.setAttribute('aria-hidden', 'true');
   monsterEl.disabled = true;
 
-  const shardWidth = monsterRect.width / columns;
-  const shardHeight = monsterRect.height / rows;
-  for (let row = 0; row < rows; row++) {
-    for (let column = 0; column < columns; column++) {
-      const x = column * shardWidth;
-      const y = row * shardHeight;
-      const width = Math.min(shardWidth, monsterRect.width - x);
-      const height = Math.min(shardHeight, monsterRect.height - y);
-      const shard = document.createElement('div');
-      shard.className = 'image-shard';
-      shard.style.left = `${monsterRect.left + x}px`;
-      shard.style.top = `${monsterRect.top + y}px`;
-      shard.style.width = `${width}px`;
-      shard.style.height = `${height}px`;
-      shard.style.backgroundImage = `url("${imageSrc}")`;
-      shard.style.backgroundSize = `${backgroundWidth}px ${backgroundHeight}px`;
-      shard.style.backgroundPosition = `${-(cropLeft + x)}px ${-(cropTop + y)}px`;
+  if (showEffects) {
+    const monsterRect = monsterEl.getBoundingClientRect();
+    const monsterImg = getElement('monster-img');
+    const imageSrc = monsterImg && (monsterImg.currentSrc || monsterImg.src)
+      ? (monsterImg.currentSrc || monsterImg.src)
+      : 'assets/monster-fallback.svg';
+    const imageWidth = monsterImg && monsterImg.naturalWidth ? monsterImg.naturalWidth : monsterRect.width;
+    const imageHeight = monsterImg && monsterImg.naturalHeight ? monsterImg.naturalHeight : monsterRect.height;
+    const viewportWidth = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || monsterRect.width;
+    const viewportHeight = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || monsterRect.height;
+    const columns = 18;
+    const rows = 24;
+    const scale = Math.max(monsterRect.width / imageWidth, monsterRect.height / imageHeight);
+    const backgroundWidth = imageWidth * scale;
+    const backgroundHeight = imageHeight * scale;
+    const cropLeft = (backgroundWidth - monsterRect.width) / 2;
+    const cropTop = (backgroundHeight - monsterRect.height) / 2;
 
-      const targetX = Math.random() * Math.max(0, viewportWidth - width);
-      const targetY = Math.random() * Math.max(0, viewportHeight - height);
-      const shardStyle = {
-        '--scatter-x': `${targetX - (monsterRect.left + x)}px`,
-        '--scatter-y': `${targetY - (monsterRect.top + y)}px`,
-        '--shard-rotation': `${Math.random() * 360 - 180}deg`,
-        '--shard-delay': `${Math.random() * 120}ms`,
-      };
-      Object.entries(shardStyle).forEach(([property, value]) => {
-        if (typeof shard.style.setProperty === 'function') {
-          shard.style.setProperty(property, value);
-        } else {
-          shard.style[property] = value;
-        }
-      });
-      document.body.appendChild(shard);
-      setTimeout(() => shard.remove(), 1100);
+    if (monsterEl.classList && typeof monsterEl.classList.add === 'function') {
+      monsterEl.classList.add('monster-dissolving');
+    } else {
+      monsterEl.className = `${monsterEl.className || ''} monster-dissolving`.trim();
+    }
+
+    const shardWidth = monsterRect.width / columns;
+    const shardHeight = monsterRect.height / rows;
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        const x = column * shardWidth;
+        const y = row * shardHeight;
+        const width = Math.min(shardWidth, monsterRect.width - x);
+        const height = Math.min(shardHeight, monsterRect.height - y);
+        const shard = document.createElement('div');
+        shard.className = 'image-shard';
+        shard.style.left = `${monsterRect.left + x}px`;
+        shard.style.top = `${monsterRect.top + y}px`;
+        shard.style.width = `${width}px`;
+        shard.style.height = `${height}px`;
+        shard.style.backgroundImage = `url("${imageSrc}")`;
+        shard.style.backgroundSize = `${backgroundWidth}px ${backgroundHeight}px`;
+        shard.style.backgroundPosition = `${-(cropLeft + x)}px ${-(cropTop + y)}px`;
+
+        const targetX = Math.random() * Math.max(0, viewportWidth - width);
+        const targetY = Math.random() * Math.max(0, viewportHeight - height);
+        const shardStyle = {
+          '--scatter-x': `${targetX - (monsterRect.left + x)}px`,
+          '--scatter-y': `${targetY - (monsterRect.top + y)}px`,
+          '--shard-rotation': `${Math.random() * 360 - 180}deg`,
+          '--shard-delay': `${Math.random() * 120}ms`,
+        };
+        Object.entries(shardStyle).forEach(([property, value]) => {
+          if (typeof shard.style.setProperty === 'function') {
+            shard.style.setProperty(property, value);
+          } else {
+            shard.style[property] = value;
+          }
+        });
+        effectsLayer.appendChild(shard);
+        setTimeout(() => shard.remove(), 1100);
+      }
     }
   }
 
@@ -432,9 +435,9 @@ function playMonsterDissolve(onComplete) {
   }, 900);
 }
 
-function playScreenCrack() {
-  const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-  const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+function playScreenCrack(effectsLayer) {
+  const viewportWidth = (document.documentElement && document.documentElement.clientWidth) || window.innerWidth;
+  const viewportHeight = (document.documentElement && document.documentElement.clientHeight) || window.innerHeight;
   const monsterRect = getElement('monster')?.getBoundingClientRect();
   const centerX = monsterRect ? monsterRect.left + monsterRect.width / 2 : viewportWidth / 2;
   const centerY = monsterRect ? monsterRect.top + monsterRect.height / 2 : viewportHeight / 2;
@@ -490,12 +493,17 @@ function playScreenCrack() {
     addCrack(branchPoints, true);
   }
 
-  document.body.appendChild(overlay);
+  effectsLayer.appendChild(overlay);
   setTimeout(() => overlay.remove(), 1800);
 }
 
-function playDefeatCelebration(hasNext) {
-  playScreenCrack();
+function playDefeatCelebration() {
+  const effectsLayer = document.createElement('div');
+  effectsLayer.className = 'defeat-effects-layer';
+  effectsLayer.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(effectsLayer);
+  playScreenCrack(effectsLayer);
+
   const celebration = document.createElement('div');
   celebration.className = 'defeat-celebration';
   celebration.setAttribute('aria-hidden', 'true');
@@ -505,11 +513,11 @@ function playDefeatCelebration(hasNext) {
   const title = document.createElement('strong');
   title.textContent = 'FINISH';
   const subtitle = document.createElement('span');
-  subtitle.textContent = hasNext ? 'NEXT BATTLE' : 'MISSION COMPLETE';
+  subtitle.textContent = 'MISSION COMPLETE';
   banner.appendChild(title);
   banner.appendChild(subtitle);
-  document.body.appendChild(celebration);
-  document.body.appendChild(banner);
+  effectsLayer.appendChild(celebration);
+  effectsLayer.appendChild(banner);
 
   const sparkleCount = 48;
   const sparkleColors = ['var(--cyan)', 'var(--purple)', 'var(--monster-accent)'];
@@ -523,11 +531,12 @@ function playDefeatCelebration(hasNext) {
     sparkle.style.setProperty('--spark-spin', `${Math.random() * 540 - 270}deg`);
     sparkle.style.setProperty('--spark-delay', `${Math.random() * 180}ms`);
     sparkle.style.setProperty('--spark-color', sparkleColors[Math.floor(Math.random() * sparkleColors.length)]);
-    document.body.appendChild(sparkle);
+    effectsLayer.appendChild(sparkle);
     setTimeout(() => sparkle.remove(), MONSTER_DEFEAT_EFFECT_MS);
   }
 
-  setTimeout(() => celebration.remove(), MONSTER_DEFEAT_EFFECT_MS);
+  setTimeout(() => effectsLayer.remove(), MONSTER_DEFEAT_EFFECT_MS);
+  return effectsLayer;
 }
 
 // 討伐にかかった時間や攻撃統計、音量・トーンをまとめて結果画面に渡すための保存データを作る関数。
@@ -572,7 +581,7 @@ function destroyMonster() {
   finalizeBattleResult();
   stopZigAttackDetection();
   const hasNext = typeof hasNextMonster === 'function' && hasNextMonster();
-  playDefeatCelebration(hasNext);
+  const effectsLayer = hasNext ? null : playDefeatCelebration();
   if (window.MetsuAudio) MetsuAudio.defeat(hasNext);
   const monsterEl = getElement('monster');
   if (monsterEl) {
@@ -590,5 +599,5 @@ function destroyMonster() {
     }
 
     setTimeout(() => showReplayScreen(), MONSTER_DEFEAT_EFFECT_MS - 900);
-  });
+  }, effectsLayer, !hasNext);
 }
