@@ -15,21 +15,25 @@ const MONSTER_DEFEAT_EFFECT_MS = 2200;
 
 // Zigセンサー入力で攻撃を有効化・無効化するための閾値定義。
 const ZIG_WS_PORT = 8765;
-const ZIG_ACCEL_ATTACK_THRESHOLD = 0.45;
-const ZIG_GYRO_INVALIDATE_NEGATIVE_X = -0.5;
-const ZIG_GYRO_INVALIDATE_POSITIVE_X = 0.5;
-const ZIG_GRAVITY_MIN_Y = 0.98;
-const ZIG_GRAVITY_MAX_Y = 1.02;
-const ZIG_GRAVITY_READY_HOLD_MS = 1500;
-const ZIG_REATTACK_COOLDOWN_MS = 600;
+const ZIG_ACCEL_ATTACK_THRESHOLD = 0.55;
+// 各方向の自然な最大傾きを保存し、誤差マージンを超える動きを攻撃候補にする。
+const ZIG_REATTACK_COOLDOWN_MS = 140;
+const ZIG_TILT_RANGE_MARGIN = 0.13;
+const ZIG_TILT_AXIS_LEARN_THRESHOLD = 0.04;
+const ZIG_ATTACK_GYRO_THRESHOLD = 0.8;
+const ZIG_BASELINE_ALPHA = 0.02;
 
 let zigSocket = null;
 let zigAttackActive = false;
 let zigMotionState = 'ready';
-let zigGravityHoldStartedAt = null;
 let zigAttackEnabled = false;
-let zigLastGyroX = 0;
-let zigCooldownStartedAt = null;
+let zigLastHitAt = null;
+let zigSensorBaseline = null;
+let zigSwingAxis = null;
+let zigLastTilt = null;
+let zigTiltDirection = 0;
+let zigTurningPoint = 0;
+let zigTiltPeaks = { positive: null, negative: null };
 
 function setAttackAvailability(enabled) {
   const attackReadyEl = getElement('attack-ready');
@@ -64,79 +68,117 @@ function handleZigSimData(raw) {
   const gravity = extractZigVector(data, 'gravity');
   const now = Date.now();
   const hintEl = getElement('attack-hint');
+  const sample = { accel, gyro, gravity };
 
-  if (zigMotionState === 'cooldown' && zigCooldownStartedAt !== null) {
-    if (now - zigCooldownStartedAt < ZIG_REATTACK_COOLDOWN_MS) {
-      if (hintEl) hintEl.innerText = '攻撃後の揺れ待機中...';
-      zigLastGyroX = gyro.x;
-      return;
-    }
-    zigMotionState = 'ready';
-    zigCooldownStartedAt = null;
-  }
-
-  const accelForce = Math.max(0, -accel.z);
-  const gyroX = gyro.x;
-  const gravityY = gravity.y ?? 0;
-
-  // ジャイロ x 軸が -0.5 未満から +0.5 超に切り替わると攻撃を無効化。
-  if (zigLastGyroX < ZIG_GYRO_INVALIDATE_NEGATIVE_X && gyroX > ZIG_GYRO_INVALIDATE_POSITIVE_X) {
-    zigAttackEnabled = false;
-    zigMotionState = 'ready';
-    zigGravityHoldStartedAt = null;
-    setAttackAvailability(false);
-    if (hintEl) hintEl.innerText = '攻撃を無効化しました。重力安定で有効化待ち...';
-  }
-
-  // 無効化後は重力 y=0.95〜1.05 が 1.5 秒安定したら再有効化する。
   if (!zigAttackEnabled) {
-    const gravityIsStable = gravityY >= ZIG_GRAVITY_MIN_Y && gravityY <= ZIG_GRAVITY_MAX_Y;
-    if (!gravityIsStable) {
-      zigGravityHoldStartedAt = null;
-      zigLastGyroX = gyroX;
-      return;
-    }
+    zigAttackEnabled = true;
+    setAttackAvailability(true);
+  }
 
-    if (zigGravityHoldStartedAt === null) {
-      zigGravityHoldStartedAt = now;
-      if (hintEl) hintEl.innerText = '重力安定を確認中...';
-      zigLastGyroX = gyroX;
-      return;
-    }
+  // 静止時の重力を基準にし、3D重力ベクトルを振り子の傾きとして追跡する。
+  if (!zigSensorBaseline) zigSensorBaseline = cloneZigSample(sample);
+  const elapsedSinceHit = zigLastHitAt === null ? Infinity : now - zigLastHitAt;
+  const centeredSample = subtractZigSamples(sample, zigSensorBaseline);
+  const gravityDelta = centeredSample.gravity;
+  if (!zigSwingAxis && vectorMagnitude(gravityDelta) >= ZIG_TILT_AXIS_LEARN_THRESHOLD) {
+    const length = vectorMagnitude(gravityDelta);
+    zigSwingAxis = { x: gravityDelta.x / length, y: gravityDelta.y / length, z: gravityDelta.z / length };
+  }
+  const tilt = zigSwingAxis ? dotZigVector(gravityDelta, zigSwingAxis) : 0;
+  updateZigTiltExtrema(tilt);
+  // accel から gravity を引いて直線加速度を求める。軸方向に依存せず3Dの強さを使う。
+  const linearAcceleration = {
+    x: accel.x - gravity.x,
+    y: accel.y - gravity.y,
+    z: accel.z - gravity.z,
+  };
+  const rawAccelForce = vectorMagnitude(linearAcceleration);
+  const gyroMagnitude = vectorMagnitude(gyro);
 
-    if (now - zigGravityHoldStartedAt >= ZIG_GRAVITY_READY_HOLD_MS) {
-      zigAttackEnabled = true;
-      zigMotionState = 'ready';
-      zigGravityHoldStartedAt = null;
-      if (hintEl) hintEl.innerText = '攻撃有効化: 大きく攻撃可能';
-      setAttackAvailability(true);
-    }
-
-    zigLastGyroX = gyroX;
+  if (zigLastHitAt !== null && elapsedSinceHit < ZIG_REATTACK_COOLDOWN_MS) {
     return;
   }
 
-  // 有効化後、ジャイロ x 軸が負方向のときだけ開始を認める。
-  if (gyroX >= 0 || zigMotionState === 'cooldown') {
-    zigLastGyroX = gyroX;
+  const isFirstAttack = zigLastHitAt === null;
+  const peak = tilt >= 0 ? zigTiltPeaks.positive : zigTiltPeaks.negative;
+  const outsideNaturalRange = peak !== null
+    && Math.abs(tilt) > Math.abs(peak) + ZIG_TILT_RANGE_MARGIN;
+  const isNewAttack = isFirstAttack
+    ? rawAccelForce >= ZIG_ACCEL_ATTACK_THRESHOLD && gyroMagnitude >= ZIG_ATTACK_GYRO_THRESHOLD
+    : outsideNaturalRange && rawAccelForce >= ZIG_ACCEL_ATTACK_THRESHOLD
+      && gyroMagnitude >= ZIG_ATTACK_GYRO_THRESHOLD;
+
+  if (!isNewAttack) {
+    if (zigLastHitAt === null) {
+      zigSensorBaseline = blendZigSamples(zigSensorBaseline, sample, ZIG_BASELINE_ALPHA);
+    }
     return;
   }
 
-  if (accelForce < ZIG_ACCEL_ATTACK_THRESHOLD) {
-    zigLastGyroX = gyroX;
-    return;
-  }
-
-  const power = Math.max(1, Math.min(3, 1 + accelForce / 4));
+  const attackStrength = rawAccelForce;
+  const power = Math.max(1, Math.min(3, 1 + attackStrength / 4));
   attackMonster(power);
-  zigAttackEnabled = false;
   zigMotionState = 'cooldown';
-  zigGravityHoldStartedAt = null;
-  zigCooldownStartedAt = now;
-  if (hintEl) hintEl.innerText = '攻撃後の揺れ待機中...';
-  setAttackAvailability(false);
+  zigLastHitAt = now;
+  if (hintEl) hintEl.innerText = '自然な振れ幅を記録中...';
+}
 
-  zigLastGyroX = gyroX;
+function vectorMagnitude(vector) {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+
+function dotZigVector(left, right) {
+  return left.x * right.x + left.y * right.y + left.z * right.z;
+}
+
+// 傾きの方向が反転したら、直前の端点をその側の自然な最大振幅として保存する。
+function updateZigTiltExtrema(tilt) {
+  if (zigLastTilt === null) {
+    zigLastTilt = tilt;
+    zigTurningPoint = tilt;
+    return;
+  }
+  const direction = Math.sign(tilt - zigLastTilt);
+  if (direction !== 0 && zigTiltDirection !== 0 && direction !== zigTiltDirection) {
+    if (zigTurningPoint >= 0) zigTiltPeaks.positive = zigTurningPoint;
+    else zigTiltPeaks.negative = zigTurningPoint;
+    zigTurningPoint = tilt;
+  } else if (direction > 0) {
+    zigTurningPoint = Math.max(zigTurningPoint, tilt);
+  } else if (direction < 0) {
+    zigTurningPoint = Math.min(zigTurningPoint, tilt);
+  }
+  if (direction !== 0) zigTiltDirection = direction;
+  zigLastTilt = tilt;
+}
+
+function cloneZigSample(sample) {
+  return {
+    accel: { ...sample.accel },
+    gyro: { ...sample.gyro },
+    gravity: { ...sample.gravity },
+  };
+}
+
+function mapZigSample(sample, mapper) {
+  const result = {};
+  ['accel', 'gyro', 'gravity'].forEach((sensor) => {
+    result[sensor] = {};
+    ['x', 'y', 'z'].forEach((axis) => {
+      result[sensor][axis] = mapper(sample[sensor][axis], sensor, axis);
+    });
+  });
+  return result;
+}
+
+function subtractZigSamples(left, right) {
+  return mapZigSample(left, (value, sensor, axis) => value - right[sensor][axis]);
+}
+
+function blendZigSamples(baseline, sample, alpha) {
+  return mapZigSample(baseline, (value, sensor, axis) => (
+    value + alpha * (sample[sensor][axis] - value)
+  ));
 }
 
 // Zigセンサー用のWebSocket接続を開始して、攻撃入力を受け取れる状態にする関数。
@@ -184,9 +226,14 @@ function disconnectZigSim() {
 function startZigAttackDetection() {
   zigAttackActive = true;
   zigMotionState = 'ready';
-  zigGravityHoldStartedAt = null;
   zigAttackEnabled = false;
-  zigLastGyroX = 0;
+  zigLastHitAt = null;
+  zigSensorBaseline = null;
+  zigSwingAxis = null;
+  zigLastTilt = null;
+  zigTiltDirection = 0;
+  zigTurningPoint = 0;
+  zigTiltPeaks = { positive: null, negative: null };
   setAttackAvailability(false);
   connectZigSim();
 }
@@ -194,10 +241,15 @@ function startZigAttackDetection() {
 // Zigの攻撃検知を止め、状態変数とセンサー接続の状態をリセットする関数。
 function stopZigAttackDetection() {
   zigAttackActive = false;
-  zigGravityHoldStartedAt = null;
   zigMotionState = 'ready';
   zigAttackEnabled = false;
-  zigLastGyroX = 0;
+  zigLastHitAt = null;
+  zigSensorBaseline = null;
+  zigSwingAxis = null;
+  zigLastTilt = null;
+  zigTiltDirection = 0;
+  zigTurningPoint = 0;
+  zigTiltPeaks = { positive: null, negative: null };
   setAttackAvailability(false);
 }
 
