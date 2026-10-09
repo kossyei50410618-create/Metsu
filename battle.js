@@ -211,6 +211,7 @@ function syncHpUi() {
   const safeHp = Math.max(0, Math.min(safeMaxHp, hp));
   const percent = (safeHp / safeMaxHp) * 100;
   hpFill.style.width = `${percent}%`;
+  if (window.MetsuAudio) MetsuAudio.setTension(percent);
   hpValue.innerText = `HP: ${safeHp} / ${safeMaxHp}`;
   const hpBar = getElement('hp-bar');
   hpBar.setAttribute('aria-valuemax', safeMaxHp);
@@ -272,6 +273,7 @@ function attackMonster(eventOrPower) {
   setTimeout(() => document.body.style.transform = 'translate(0,0)', 50);
 
   createParticles();
+  if (window.MetsuAudio) MetsuAudio.hit(inputPower, hp <= 0);
   if (hp <= 0) destroyMonster();
 }
 
@@ -519,6 +521,7 @@ function destroyMonster() {
   stopZigAttackDetection();
   const hasNext = typeof hasNextMonster === 'function' && hasNextMonster();
   playDefeatCelebration(hasNext);
+  if (window.MetsuAudio) MetsuAudio.defeat(hasNext);
   const monsterEl = getElement('monster');
   if (monsterEl) {
     monsterEl.setAttribute('data-state', 'defeated');

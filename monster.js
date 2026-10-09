@@ -279,6 +279,7 @@ async function renderMonster(category, monsterForm, storedData) {
   totalDamageDealt = 0;
   maxSingleDamage = 0;
 
+  if (window.MetsuAudio) MetsuAudio.summon();
   startZigAttackDetection();
 }
 

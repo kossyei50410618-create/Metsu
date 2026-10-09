@@ -67,7 +67,9 @@ function renderResultScreen() {
   setText('result-avg-damage', `${avgDamage}`);
   setText('result-max-hit', `${data.maxSingleDamage ?? 0}`);
   setText('result-form', formLabelOf(data.monsterForm));
-  setText('result-rank', computeRank(data.elapsedMs, data.attackCount ?? 0));
+  const rank = computeRank(data.elapsedMs, data.attackCount ?? 0);
+  setText('result-rank', rank);
+  if (window.MetsuAudio) MetsuAudio.victory(rank);
 
   const audioAnalysisPanel = document.getElementById('audio-analysis-panel');
   const audioAnalysisText = typeof data.audioAnalysisText === 'string' ? data.audioAnalysisText.trim() : '';
