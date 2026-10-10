@@ -86,6 +86,12 @@ function getMonsterHealthStage(currentHp, maximumHp) {
   return '';
 }
 
+function getInputLengthHpBonus(rawText) {
+  const text = typeof rawText === 'string' ? rawText.trim() : '';
+  const characterCount = [...text].length;
+  return Math.floor(characterCount / 15) * 10;
+}
+
 async function generateMonsterImage(typeName, form = 'normal', healthStage = '') {
   const resolvedType = typeName || monsterType;
   const baseType = resolvedType || 'normal';
@@ -228,6 +234,7 @@ async function renderMonster(category, monsterForm, storedData) {
   } else {
     maxHp = Math.floor(Math.random() * 81) + 100;
   }
+  maxHp += getInputLengthHpBonus(storedData?.rawText);
   hp = maxHp;
 
   const monsterEl = getElement('monster');

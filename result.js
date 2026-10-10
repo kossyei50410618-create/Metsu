@@ -25,9 +25,9 @@ function formLabelOf(form) {
 // 討伐タイムと攻撃回数から簡易ランクを算出する（演出用のおまけ要素）
 function computeRank(elapsedMs, attackCount) {
   const seconds = elapsedMs / 1000;
-  if (elapsedMs > 0 && seconds <= 5 && attackCount <= 6) return 'S';
-  if (elapsedMs > 0 && seconds <= 10 && attackCount <= 10) return 'A';
-  if (elapsedMs > 0 && seconds <= 20) return 'B';
+  if (elapsedMs > 0 && (attackCount <= 3 || seconds <= 10)) return 'S';
+  if (elapsedMs > 0 && attackCount <= 5 && seconds <= 25) return 'A';
+  if (elapsedMs > 0 && attackCount <= 10 && seconds <= 35) return 'B';
   return 'C';
 }
 

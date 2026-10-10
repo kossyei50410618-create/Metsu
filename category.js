@@ -138,7 +138,7 @@ const categories = [
       { word: '腰痛', weight: 1 }, { word: '通院', weight: 1 },
       { word: '薬', weight: 1 },
       { word: '過労', weight: 2 }, { word: '倦怠感', weight: 1 },
-      { word: 'ヤバい', weight: 1 },
+      { word: 'ヤバい', weight: 1 },{ word: '健康被害', weight: 2},
     ],
     fallbackKeywords: [
       { word: '睡眠不足', weight: 1 },
