@@ -130,11 +130,14 @@ function resetToInputScreen(event) {
   window.location.href = 'index.html';
 }
 
+const GEMINI_ANALYSIS_TIMEOUT_MS = 8000;
+
 async function generateResponse(prompt, userMessage, options = {}) {
   const {
     model = CONFIG.SPEECH_ANALYSIS_MODEL,
     temperature = 0.7,
     maxOutputTokens = 800,
+    deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS,
     apiKey = CONFIG.SPEECH_API_KEY,   // 【修正】未定義の GEMINI_API_KEY をやめる
   } = options;
 
@@ -150,14 +153,34 @@ async function generateResponse(prompt, userMessage, options = {}) {
   const RETRY_DELAYS = [];
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 0) throw new Error('Gemini analysis timed out after 8 seconds');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), remainingMs);
+    let response;
+    let data;
+    let errorText = '';
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+      if (response.ok) data = await response.json();
+      else errorText = await response.text();
+      if (Date.now() >= deadlineAt) throw new Error('Gemini analysis timed out after 8 seconds');
+    } catch (error) {
+      if (controller.signal.aborted || Date.now() >= deadlineAt) {
+        throw new Error('Gemini analysis timed out after 8 seconds');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (response.ok) {
-      const data = await response.json();
       const candidate = data.candidates?.[0];
       const text = candidate?.content?.parts
         ?.map((part) => part.text || '')
@@ -170,7 +193,6 @@ async function generateResponse(prompt, userMessage, options = {}) {
       return text;
     }
 
-    const errorText = await response.text();
     const isRetryable = response.status === 503 || response.status === 429;
 
     if (isRetryable && attempt < MAX_RETRIES) {
@@ -183,7 +205,7 @@ async function generateResponse(prompt, userMessage, options = {}) {
   }
 }
 
-async function analyzeSpeechText(transcript) {
+async function analyzeSpeechText(transcript, deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) {
   const apiKey = CONFIG.SPEECH_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な SPEECH_API_KEY を設定してください。");
 
@@ -202,6 +224,7 @@ async function analyzeSpeechText(transcript) {
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 400,
+    deadlineAt,
   });
   return /[。！？!?」』]$/.test(analysis) ? analysis : transcript;
 }
@@ -212,7 +235,7 @@ function shouldAnalyzeAudioFeatures(audioStats) {
   return true;
 }
 
-async function analyzeAudioFeatures(audioStats) {
+async function analyzeAudioFeatures(audioStats, deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) {
   if (!shouldAnalyzeAudioFeatures(audioStats)) return '';
 
   const apiKey = CONFIG.AUDIO_API_KEY;
@@ -232,6 +255,7 @@ async function analyzeAudioFeatures(audioStats) {
     apiKey,
     temperature: 0.0,
     maxOutputTokens: 120,
+    deadlineAt,
   });
   return analysis.replace(/\*\*/g, '');
 }
@@ -655,8 +679,9 @@ async function startRecognition() {
     status.innerText = '認識完了。解析中...';
 
     let analysis = '';
+    const geminiDeadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS;
     try {
-      analysis = await analyzeSpeechText(normalizedTranscript);
+      analysis = await analyzeSpeechText(normalizedTranscript, geminiDeadlineAt);
       status.innerText = `認識完了: ${normalizedTranscript}`;
     } catch (error) {
       console.warn('音声解析エラー:', error);
@@ -665,8 +690,8 @@ async function startRecognition() {
 
     let audioAnalysis = '';
     try {
-      if (shouldAnalyzeAudioFeatures(audioStats)) {
-        audioAnalysis = await analyzeAudioFeatures(audioStats);
+      if (Date.now() < geminiDeadlineAt && shouldAnalyzeAudioFeatures(audioStats)) {
+        audioAnalysis = await analyzeAudioFeatures(audioStats, geminiDeadlineAt);
       }
     } catch (error) {
       console.warn('音響特徴量解析エラー:', error);
@@ -674,7 +699,7 @@ async function startRecognition() {
 
     updatePipelineStage('ステップ 3/4: モンスターを生成しています');
     status.innerText = '認識完了。少し待ってから出現します...';
-    await sleep(1200);
+    if (Date.now() < geminiDeadlineAt) await sleep(1200);
     await generateMonster(analysis || normalizedTranscript, audioAnalysis);
     updatePipelineStage('ステップ 4/4: モンスター討伐へ');
   } catch (error) {
