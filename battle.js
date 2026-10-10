@@ -18,8 +18,12 @@ const ZIG_WS_PORT = 8765;
 const ZIG_ACCEL_ATTACK_THRESHOLD = 0.55;
 // 各方向の自然な最大傾きを保存し、誤差マージンを超える動きを攻撃候補にする。
 const ZIG_REATTACK_COOLDOWN_MS = 140;
-const ZIG_TILT_RANGE_MARGIN = 0.13;
+const ZIG_TILT_RANGE_MARGIN = 0.1;
 const ZIG_TILT_AXIS_LEARN_THRESHOLD = 0.04;
+const ZIG_STATIONARY_RESET_MS = 1500;
+const ZIG_STATIONARY_ACCEL_THRESHOLD = 0.08;
+const ZIG_STATIONARY_GYRO_THRESHOLD = 0.12;
+const ZIG_STATIONARY_POSITION_EPSILON = 0.02;
 const ZIG_ATTACK_GYRO_THRESHOLD = 0.8;
 const ZIG_BASELINE_ALPHA = 0.02;
 
@@ -34,6 +38,10 @@ let zigLastTilt = null;
 let zigTiltDirection = 0;
 let zigTurningPoint = 0;
 let zigTiltPeaks = { positive: null, negative: null };
+let zigAwaitingStillness = false;
+let zigStillSince = null;
+let zigPreviousGravity = null;
+let zigRequireStillnessBeforeAttack = false;
 
 function setAttackAvailability(enabled) {
   const attackReadyEl = getElement('attack-ready');
@@ -70,11 +78,6 @@ function handleZigSimData(raw) {
   const hintEl = getElement('attack-hint');
   const sample = { accel, gyro, gravity };
 
-  if (!zigAttackEnabled) {
-    zigAttackEnabled = true;
-    setAttackAvailability(true);
-  }
-
   // 静止時の重力を基準にし、3D重力ベクトルを振り子の傾きとして追跡する。
   if (!zigSensorBaseline) zigSensorBaseline = cloneZigSample(sample);
   const elapsedSinceHit = zigLastHitAt === null ? Infinity : now - zigLastHitAt;
@@ -94,6 +97,47 @@ function handleZigSimData(raw) {
   };
   const rawAccelForce = vectorMagnitude(linearAcceleration);
   const gyroMagnitude = vectorMagnitude(gyro);
+
+  if (zigAwaitingStillness) {
+    const gravityStable = zigPreviousGravity !== null
+      && vectorMagnitude({
+        x: gravity.x - zigPreviousGravity.x,
+        y: gravity.y - zigPreviousGravity.y,
+        z: gravity.z - zigPreviousGravity.z,
+      }) <= ZIG_STATIONARY_POSITION_EPSILON;
+    const isStationary = gravityStable
+      && rawAccelForce <= ZIG_STATIONARY_ACCEL_THRESHOLD
+      && gyroMagnitude <= ZIG_STATIONARY_GYRO_THRESHOLD;
+    if (isStationary) {
+      if (zigStillSince === null) zigStillSince = now;
+    } else {
+      zigStillSince = null;
+    }
+    zigPreviousGravity = { ...gravity };
+
+    if (zigStillSince !== null && now - zigStillSince >= ZIG_STATIONARY_RESET_MS) {
+      zigSensorBaseline = cloneZigSample(sample);
+      zigSwingAxis = null;
+      zigLastTilt = null;
+      zigTiltDirection = 0;
+      zigTurningPoint = 0;
+      zigTiltPeaks = { positive: null, negative: null };
+      zigLastHitAt = null;
+      zigAwaitingStillness = false;
+      zigRequireStillnessBeforeAttack = false;
+      zigStillSince = null;
+      zigPreviousGravity = null;
+      zigAttackEnabled = true;
+      setAttackAvailability(true);
+      if (hintEl) hintEl.innerText = '安定';
+    }
+    return;
+  }
+
+  if (!zigAttackEnabled) {
+    zigAttackEnabled = true;
+    setAttackAvailability(true);
+  }
 
   if (zigLastHitAt !== null && elapsedSinceHit < ZIG_REATTACK_COOLDOWN_MS) {
     return;
@@ -120,7 +164,7 @@ function handleZigSimData(raw) {
   attackMonster(power);
   zigMotionState = 'cooldown';
   zigLastHitAt = now;
-  if (hintEl) hintEl.innerText = '自然な振れ幅を記録中...';
+  if (hintEl) hintEl.innerText = '攻撃方向を記録しました。';
 }
 
 function vectorMagnitude(vector) {
@@ -227,6 +271,9 @@ function startZigAttackDetection() {
   zigAttackActive = true;
   zigMotionState = 'ready';
   zigAttackEnabled = false;
+  zigAwaitingStillness = zigRequireStillnessBeforeAttack;
+  zigStillSince = null;
+  zigPreviousGravity = null;
   zigLastHitAt = null;
   zigSensorBaseline = null;
   zigSwingAxis = null;
@@ -243,6 +290,9 @@ function stopZigAttackDetection() {
   zigAttackActive = false;
   zigMotionState = 'ready';
   zigAttackEnabled = false;
+  zigAwaitingStillness = false;
+  zigStillSince = null;
+  zigPreviousGravity = null;
   zigLastHitAt = null;
   zigSensorBaseline = null;
   zigSwingAxis = null;
@@ -305,7 +355,7 @@ function attackMonster(eventOrPower) {
     default: baseDamage = 15;
   }
 
-  const damage = Math.round(baseDamage * inputPower);
+  const damage = Math.round(baseDamage * inputPower * 0.8);
   attackCount += 1;
   const counter = getElement('attack-count');
   if (counter) counter.textContent = String(attackCount).padStart(2, '0');
@@ -579,8 +629,9 @@ function showReplayScreen() {
 // hasNextMonster / spawnNextMonster は monster.js 側で定義されている。
 function destroyMonster() {
   finalizeBattleResult();
-  stopZigAttackDetection();
   const hasNext = typeof hasNextMonster === 'function' && hasNextMonster();
+  zigRequireStillnessBeforeAttack = hasNext;
+  stopZigAttackDetection();
   const effectsLayer = hasNext ? null : playDefeatCelebration();
   if (window.MetsuAudio) MetsuAudio.defeat(hasNext);
   const monsterEl = getElement('monster');
