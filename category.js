@@ -127,7 +127,7 @@ const categories = [
   {
     key: 'health', label: '健康・心身の悩み', monster: 'health',
     keywords: [
-      { word: '体調不良', weight: 2 },
+      {word: '健康', weight: 4},{ word: '体調不良', weight: 2 },
       { word: 'うつ', weight: 2 }, { word: '不眠', weight: 2 },
       { word: '体調', weight: 1 },
       { word: '睡眠', weight: 1 }, { word: '病気', weight: 1 },
@@ -136,7 +136,7 @@ const categories = [
       { word: 'ダイエット', weight: 1 }, { word: '休息', weight: 1 },
       { word: '頭痛', weight: 1 },
       { word: '腰痛', weight: 1 }, { word: '通院', weight: 1 },
-      { word: '薬', weight: 1 },
+      { word: '薬', weight: 1 },{word: '暑い', weight: 1}, {word: '寒い', weight: 1},
       { word: '過労', weight: 2 }, { word: '倦怠感', weight: 1 },
       { word: 'ヤバい', weight: 1 },{ word: '健康被害', weight: 2},
     ],
