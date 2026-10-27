@@ -141,6 +141,8 @@ async function generateResponse(prompt, userMessage, options = {}) {
     apiKey = CONFIG.SPEECH_API_KEY,   // 【修正】未定義の GEMINI_API_KEY をやめる
   } = options;
 
+  if (!apiKey) throw new Error('AI analysis is not configured; using text classification.');
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const requestBody = {
     systemInstruction: { parts: [{ text: prompt }] },
@@ -768,7 +770,7 @@ if (attackButton) attackButton.addEventListener('click', attackMonster);
 if (replayBtn) replayBtn.addEventListener('click', resetToInputScreen);
 
 window.addEventListener('beforeunload', () => {
-  if (typeof disconnectZigSim === 'function') disconnectZigSim();
+  if (typeof stopPhoneSensors === 'function') stopPhoneSensors();
 });
 
 if (document.getElementById('battle-screen') && typeof initializeBattlePage === 'function') {

@@ -287,7 +287,7 @@ async function renderMonster(category, monsterForm, storedData) {
   maxSingleDamage = 0;
 
   if (window.MetsuAudio) MetsuAudio.summon();
-  startZigAttackDetection();
+  startSensorAttackDetection();
 }
 
 // 1体倒した後、キューに次の敵がいれば呼ばれる(battle.js の destroyMonster から呼び出す)

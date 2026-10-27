@@ -1161,6 +1161,25 @@ summary>span {
     padding: 14px;
 }
 
+.sensor-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.sensor-controls .button {
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 14px;
+}
+
+#sensor-readings {
+    white-space: pre-line;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
 .sensor-status {
     color: var(--muted);
     font-size: 22px;

@@ -46,10 +46,21 @@
                     <h2>センサーリンク</h2>
                 </div>
                 <div class="sensor-content">
-                    <p id="attack-hint" class="sensor-status" role="status">パンチングボールの接続を確認中…</p>
+                    <p id="motion-status" class="sensor-status" role="status">スマホのセンサーを有効にしてください。</p>
+                    <div class="sensor-controls">
+                        <button id="sensor-start-btn" class="button primary" type="button">センサーを有効にする</button>
+                        <button id="sensor-stop-btn" class="button secondary" type="button" disabled>停止</button>
+                        <button id="sensor-calibrate-btn" class="button secondary" type="button" disabled>再調整</button>
+                    </div>
+                    <p id="attack-hint" role="status">モンスターをタップしても攻撃できます。</p>
+                    <details class="sensor-help">
+                        <summary>センサーの値</summary>
+                        <p id="sensor-readings">加速度・重力・ジャイロ: --</p>
+                    </details>
                     <details class="sensor-help">
                         <summary>接続ガイド</summary>
-                        <p>ZIG SIM と中継サーバーを接続し、パンチングボールを叩いて攻撃します。</p>
+                        <p>HTTPSでこのページを開き、センサーを有効にして許可してください。スマホを1.5秒静止してから動かすと攻撃できます。画面を開いたまま使用してください。持ち方を変えたら「再調整」を押してください。</p>
+                        <p>スマホをしっかり持ち、投げたり物にぶつけたりしないでください。センサーが使えない場合はモンスターをタップできます。</p>
                     </details>
                 </div>
             </section>
@@ -59,6 +70,7 @@
     <script src="mic.js"></script>
     <script src="category.js"></script>
     <script src="monster.js"></script>
+    <script src="motion.js"></script>
     <script src="battle.js"></script>
     <script type="module" src="script.js"></script>
     <script src="ui.js"></script>

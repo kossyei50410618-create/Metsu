@@ -13,82 +13,58 @@ let maxSingleDamage = 0;
 const RESULT_DATA_KEY = 'metsuResultData';
 const MONSTER_DEFEAT_EFFECT_MS = 2200;
 
-// Zigセンサー入力で攻撃を有効化・無効化するための閾値定義。
-const ZIG_WS_PORT = 8765;
-const ZIG_ACCEL_ATTACK_THRESHOLD = 0.55;
+// Browser sensor thresholds: acceleration/gravity in G, gyro in rad/s.
+const SENSOR_ACCEL_ATTACK_THRESHOLD = 0.55;
 // 各方向の自然な最大傾きを保存し、誤差マージンを超える動きを攻撃候補にする。
-const ZIG_REATTACK_COOLDOWN_MS = 140;
-const ZIG_TILT_RANGE_MARGIN = 0.1;
-const ZIG_TILT_AXIS_LEARN_THRESHOLD = 0.04;
-const ZIG_STATIONARY_RESET_MS = 1500;
-const ZIG_STATIONARY_ACCEL_THRESHOLD = 0.08;
-const ZIG_STATIONARY_GYRO_THRESHOLD = 0.12;
-const ZIG_STATIONARY_POSITION_EPSILON = 0.02;
-const ZIG_ATTACK_GYRO_THRESHOLD = 0.8;
-const ZIG_BASELINE_ALPHA = 0.02;
+const SENSOR_REATTACK_COOLDOWN_MS = 140;
+const SENSOR_TILT_RANGE_MARGIN = 0.1;
+const SENSOR_TILT_AXIS_LEARN_THRESHOLD = 0.04;
+const SENSOR_STATIONARY_RESET_MS = 1500;
+const SENSOR_STATIONARY_ACCEL_THRESHOLD = 0.08;
+const SENSOR_STATIONARY_GYRO_THRESHOLD = 0.12;
+const SENSOR_STATIONARY_POSITION_EPSILON = 0.02;
+const SENSOR_ATTACK_GYRO_THRESHOLD = 0.8;
+const SENSOR_BASELINE_ALPHA = 0.02;
 
-let zigSocket = null;
-let zigAttackActive = false;
-let zigMotionState = 'ready';
-let zigAttackEnabled = false;
-let zigLastHitAt = null;
-let zigSensorBaseline = null;
-let zigSwingAxis = null;
-let zigLastTilt = null;
-let zigTiltDirection = 0;
-let zigTurningPoint = 0;
-let zigTiltPeaks = { positive: null, negative: null };
-let zigAwaitingStillness = false;
-let zigStillSince = null;
-let zigPreviousGravity = null;
-let zigRequireStillnessBeforeAttack = false;
+let sensorAttackActive = false;
+let sensorMotionState = 'ready';
+let sensorAttackEnabled = false;
+let sensorLastHitAt = null;
+let sensorBaseline = null;
+let sensorSwingAxis = null;
+let sensorLastTilt = null;
+let sensorTiltDirection = 0;
+let sensorTurningPoint = 0;
+let sensorTiltPeaks = { positive: null, negative: null };
+let sensorAwaitingStillness = false;
+let sensorStillSince = null;
+let sensorPreviousGravity = null;
 
 function setAttackAvailability(enabled) {
-  const attackReadyEl = getElement('attack-ready');
+  const attackReadyEl = document.getElementById('attack-ready');
   if (!attackReadyEl) return;
   attackReadyEl.innerText = enabled ? '攻撃可能' : '攻撃不可';
   attackReadyEl.hidden = false;
 }
 
-// Zigセンサーの値を、オブジェクト形式またはフラット形式の入力から{x,y,z}へ正規化して取り出す関数。
-function extractZigVector(data, prefix) {
-  const sensordata = (data && typeof data.sensordata === 'object') ? data.sensordata : data;
-  const nested = sensordata ? sensordata[prefix] : null;
-  if (nested && typeof nested === 'object') {
-    return { x: Number(nested.x ?? 0), y: Number(nested.y ?? 0), z: Number(nested.z ?? 0) };
-  }
-  const flatSource = sensordata || {};
-  return {
-    x: Number(flatSource[`${prefix}.x`] ?? 0),
-    y: Number(flatSource[`${prefix}.y`] ?? 0),
-    z: Number(flatSource[`${prefix}.z`] ?? 0),
-  };
-}
-
-// WebSocketで受け取ったZigセンサー情報を読み、攻撃判定と攻撃可否の状態遷移を管理する関数。
-function handleZigSimData(raw) {
-  if (!zigAttackActive) return;
-  let data;
-  try { data = JSON.parse(raw); } catch (err) { return; }
-
-  const accel = extractZigVector(data, 'accel');
-  const gyro = extractZigVector(data, 'gyro');
-  const gravity = extractZigVector(data, 'gravity');
+// Normalized browser samples: accel/gravity in G, gyro in rad/s.
+function handleSensorSample(sample) {
+  if (!sensorAttackActive) return;
+  const { accel, gyro, gravity } = sample;
   const now = Date.now();
   const hintEl = getElement('attack-hint');
-  const sample = { accel, gyro, gravity };
 
   // 静止時の重力を基準にし、3D重力ベクトルを振り子の傾きとして追跡する。
-  if (!zigSensorBaseline) zigSensorBaseline = cloneZigSample(sample);
-  const elapsedSinceHit = zigLastHitAt === null ? Infinity : now - zigLastHitAt;
-  const centeredSample = subtractZigSamples(sample, zigSensorBaseline);
+  if (!sensorBaseline) sensorBaseline = cloneSensorSample(sample);
+  const elapsedSinceHit = sensorLastHitAt === null ? Infinity : now - sensorLastHitAt;
+  const centeredSample = subtractSensorSamples(sample, sensorBaseline);
   const gravityDelta = centeredSample.gravity;
-  if (!zigSwingAxis && vectorMagnitude(gravityDelta) >= ZIG_TILT_AXIS_LEARN_THRESHOLD) {
+  if (!sensorSwingAxis && vectorMagnitude(gravityDelta) >= SENSOR_TILT_AXIS_LEARN_THRESHOLD) {
     const length = vectorMagnitude(gravityDelta);
-    zigSwingAxis = { x: gravityDelta.x / length, y: gravityDelta.y / length, z: gravityDelta.z / length };
+    sensorSwingAxis = { x: gravityDelta.x / length, y: gravityDelta.y / length, z: gravityDelta.z / length };
   }
-  const tilt = zigSwingAxis ? dotZigVector(gravityDelta, zigSwingAxis) : 0;
-  updateZigTiltExtrema(tilt);
+  const tilt = sensorSwingAxis ? dotSensorVector(gravityDelta, sensorSwingAxis) : 0;
+  updateSensorTiltExtrema(tilt);
   // accel から gravity を引いて直線加速度を求める。軸方向に依存せず3Dの強さを使う。
   const linearAcceleration = {
     x: accel.x - gravity.x,
@@ -98,105 +74,104 @@ function handleZigSimData(raw) {
   const rawAccelForce = vectorMagnitude(linearAcceleration);
   const gyroMagnitude = vectorMagnitude(gyro);
 
-  if (zigAwaitingStillness) {
-    const gravityStable = zigPreviousGravity !== null
+  if (sensorAwaitingStillness) {
+    const gravityStable = sensorPreviousGravity !== null
       && vectorMagnitude({
-        x: gravity.x - zigPreviousGravity.x,
-        y: gravity.y - zigPreviousGravity.y,
-        z: gravity.z - zigPreviousGravity.z,
-      }) <= ZIG_STATIONARY_POSITION_EPSILON;
+        x: gravity.x - sensorPreviousGravity.x,
+        y: gravity.y - sensorPreviousGravity.y,
+        z: gravity.z - sensorPreviousGravity.z,
+      }) <= SENSOR_STATIONARY_POSITION_EPSILON;
     const isStationary = gravityStable
-      && rawAccelForce <= ZIG_STATIONARY_ACCEL_THRESHOLD
-      && gyroMagnitude <= ZIG_STATIONARY_GYRO_THRESHOLD;
+      && rawAccelForce <= SENSOR_STATIONARY_ACCEL_THRESHOLD
+      && gyroMagnitude <= SENSOR_STATIONARY_GYRO_THRESHOLD;
     if (isStationary) {
-      if (zigStillSince === null) zigStillSince = now;
+      if (sensorStillSince === null) sensorStillSince = now;
     } else {
-      zigStillSince = null;
+      sensorStillSince = null;
     }
-    zigPreviousGravity = { ...gravity };
+    sensorPreviousGravity = { ...gravity };
 
-    if (zigStillSince !== null && now - zigStillSince >= ZIG_STATIONARY_RESET_MS) {
-      zigSensorBaseline = cloneZigSample(sample);
-      zigSwingAxis = null;
-      zigLastTilt = null;
-      zigTiltDirection = 0;
-      zigTurningPoint = 0;
-      zigTiltPeaks = { positive: null, negative: null };
-      zigLastHitAt = null;
-      zigAwaitingStillness = false;
-      zigRequireStillnessBeforeAttack = false;
-      zigStillSince = null;
-      zigPreviousGravity = null;
-      zigAttackEnabled = true;
+    if (sensorStillSince !== null && now - sensorStillSince >= SENSOR_STATIONARY_RESET_MS) {
+      sensorBaseline = cloneSensorSample(sample);
+      sensorSwingAxis = null;
+      sensorLastTilt = null;
+      sensorTiltDirection = 0;
+      sensorTurningPoint = 0;
+      sensorTiltPeaks = { positive: null, negative: null };
+      sensorLastHitAt = null;
+      sensorAwaitingStillness = false;
+      sensorStillSince = null;
+      sensorPreviousGravity = null;
+      sensorAttackEnabled = true;
       setAttackAvailability(true);
       if (hintEl) hintEl.innerText = '安定';
     }
     return;
   }
 
-  if (!zigAttackEnabled) {
-    zigAttackEnabled = true;
+  if (!sensorAttackEnabled) {
+    sensorAttackEnabled = true;
     setAttackAvailability(true);
   }
 
-  if (zigLastHitAt !== null && elapsedSinceHit < ZIG_REATTACK_COOLDOWN_MS) {
+  if (sensorLastHitAt !== null && elapsedSinceHit < SENSOR_REATTACK_COOLDOWN_MS) {
     return;
   }
 
-  const isFirstAttack = zigLastHitAt === null;
-  const peak = tilt >= 0 ? zigTiltPeaks.positive : zigTiltPeaks.negative;
+  const isFirstAttack = sensorLastHitAt === null;
+  const peak = tilt >= 0 ? sensorTiltPeaks.positive : sensorTiltPeaks.negative;
   const outsideNaturalRange = peak !== null
-    && Math.abs(tilt) > Math.abs(peak) + ZIG_TILT_RANGE_MARGIN;
+    && Math.abs(tilt) > Math.abs(peak) + SENSOR_TILT_RANGE_MARGIN;
   const isNewAttack = isFirstAttack
-    ? rawAccelForce >= ZIG_ACCEL_ATTACK_THRESHOLD && gyroMagnitude >= ZIG_ATTACK_GYRO_THRESHOLD
-    : outsideNaturalRange && rawAccelForce >= ZIG_ACCEL_ATTACK_THRESHOLD
-      && gyroMagnitude >= ZIG_ATTACK_GYRO_THRESHOLD;
+    ? rawAccelForce >= SENSOR_ACCEL_ATTACK_THRESHOLD && gyroMagnitude >= SENSOR_ATTACK_GYRO_THRESHOLD
+    : outsideNaturalRange && rawAccelForce >= SENSOR_ACCEL_ATTACK_THRESHOLD
+      && gyroMagnitude >= SENSOR_ATTACK_GYRO_THRESHOLD;
 
   if (!isNewAttack) {
-    if (zigLastHitAt === null) {
-      zigSensorBaseline = blendZigSamples(zigSensorBaseline, sample, ZIG_BASELINE_ALPHA);
+    if (sensorLastHitAt === null) {
+      sensorBaseline = blendSensorSamples(sensorBaseline, sample, SENSOR_BASELINE_ALPHA);
     }
     return;
   }
 
   const attackStrength = rawAccelForce;
   const power = Math.max(1, Math.min(3, 1 + attackStrength / 4));
-  attackMonster(power);
-  zigMotionState = 'cooldown';
-  zigLastHitAt = now;
+  sensorMotionState = 'cooldown';
+  sensorLastHitAt = now;
   if (hintEl) hintEl.innerText = '攻撃方向を記録しました。';
+  attackMonster(power);
 }
 
 function vectorMagnitude(vector) {
   return Math.hypot(vector.x, vector.y, vector.z);
 }
 
-function dotZigVector(left, right) {
+function dotSensorVector(left, right) {
   return left.x * right.x + left.y * right.y + left.z * right.z;
 }
 
 // 傾きの方向が反転したら、直前の端点をその側の自然な最大振幅として保存する。
-function updateZigTiltExtrema(tilt) {
-  if (zigLastTilt === null) {
-    zigLastTilt = tilt;
-    zigTurningPoint = tilt;
+function updateSensorTiltExtrema(tilt) {
+  if (sensorLastTilt === null) {
+    sensorLastTilt = tilt;
+    sensorTurningPoint = tilt;
     return;
   }
-  const direction = Math.sign(tilt - zigLastTilt);
-  if (direction !== 0 && zigTiltDirection !== 0 && direction !== zigTiltDirection) {
-    if (zigTurningPoint >= 0) zigTiltPeaks.positive = zigTurningPoint;
-    else zigTiltPeaks.negative = zigTurningPoint;
-    zigTurningPoint = tilt;
+  const direction = Math.sign(tilt - sensorLastTilt);
+  if (direction !== 0 && sensorTiltDirection !== 0 && direction !== sensorTiltDirection) {
+    if (sensorTurningPoint >= 0) sensorTiltPeaks.positive = sensorTurningPoint;
+    else sensorTiltPeaks.negative = sensorTurningPoint;
+    sensorTurningPoint = tilt;
   } else if (direction > 0) {
-    zigTurningPoint = Math.max(zigTurningPoint, tilt);
+    sensorTurningPoint = Math.max(sensorTurningPoint, tilt);
   } else if (direction < 0) {
-    zigTurningPoint = Math.min(zigTurningPoint, tilt);
+    sensorTurningPoint = Math.min(sensorTurningPoint, tilt);
   }
-  if (direction !== 0) zigTiltDirection = direction;
-  zigLastTilt = tilt;
+  if (direction !== 0) sensorTiltDirection = direction;
+  sensorLastTilt = tilt;
 }
 
-function cloneZigSample(sample) {
+function cloneSensorSample(sample) {
   return {
     accel: { ...sample.accel },
     gyro: { ...sample.gyro },
@@ -204,7 +179,7 @@ function cloneZigSample(sample) {
   };
 }
 
-function mapZigSample(sample, mapper) {
+function mapSensorSample(sample, mapper) {
   const result = {};
   ['accel', 'gyro', 'gravity'].forEach((sensor) => {
     result[sensor] = {};
@@ -215,93 +190,115 @@ function mapZigSample(sample, mapper) {
   return result;
 }
 
-function subtractZigSamples(left, right) {
-  return mapZigSample(left, (value, sensor, axis) => value - right[sensor][axis]);
+function subtractSensorSamples(left, right) {
+  return mapSensorSample(left, (value, sensor, axis) => value - right[sensor][axis]);
 }
 
-function blendZigSamples(baseline, sample, alpha) {
-  return mapZigSample(baseline, (value, sensor, axis) => (
+function blendSensorSamples(baseline, sample, alpha) {
+  return mapSensorSample(baseline, (value, sensor, axis) => (
     value + alpha * (sample[sensor][axis] - value)
   ));
 }
 
-// Zigセンサー用のWebSocket接続を開始して、攻撃入力を受け取れる状態にする関数。
-function connectZigSim() {
-  if (zigSocket || typeof WebSocket === 'undefined') return;
-  const host = location.hostname || 'localhost';
-  try {
-    zigSocket = new WebSocket(`ws://${host}:${ZIG_WS_PORT}`);
-  } catch (err) {
-    console.warn('ZIG SIM WebSocket接続に失敗:', err);
-    zigSocket = null;
-    return;
-  }
+// Sensorの攻撃検知を開始し、初期状態と接続を準備する関数。
+function startSensorAttackDetection() {
+  sensorAttackActive = true;
+  sensorMotionState = 'ready';
+  sensorAttackEnabled = false;
+  sensorAwaitingStillness = true;
+  sensorStillSince = null;
+  sensorPreviousGravity = null;
+  sensorLastHitAt = null;
+  sensorBaseline = null;
+  sensorSwingAxis = null;
+  sensorLastTilt = null;
+  sensorTiltDirection = 0;
+  sensorTurningPoint = 0;
+  sensorTiltPeaks = { positive: null, negative: null };
+  setAttackAvailability(false);
+  showSensorCalibrationHint();
+}
 
-  zigSocket.onopen = () => {
-    const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'パンチングボール接続中: 叩いて攻撃！';
-  };
-  zigSocket.onmessage = (event) => handleZigSimData(event.data);
-  zigSocket.onerror = () => {
-    const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
-  };
-  zigSocket.onclose = () => {
-    zigSocket = null;
-    const hintEl = getElement('attack-hint');
-    if (hintEl) hintEl.innerText = 'センサー未接続 · パンチングボールの接続を確認してください。';
-    if (zigAttackActive) {
-      setTimeout(() => {
-        if (zigAttackActive && !zigSocket) connectZigSim();
-      }, 1000);
+// Sensorの攻撃検知を止め、状態変数とセンサー接続の状態をリセットする関数。
+function stopSensorAttackDetection() {
+  sensorAttackActive = false;
+  sensorMotionState = 'ready';
+  sensorAttackEnabled = false;
+  sensorAwaitingStillness = false;
+  sensorStillSince = null;
+  sensorPreviousGravity = null;
+  sensorLastHitAt = null;
+  sensorBaseline = null;
+  sensorSwingAxis = null;
+  sensorLastTilt = null;
+  sensorTiltDirection = 0;
+  sensorTurningPoint = 0;
+  sensorTiltPeaks = { positive: null, negative: null };
+  setAttackAvailability(false);
+}
+
+// Permission, capture lifecycle, and sensor controls for this battle page.
+const motionStatusMessages = {
+  idle: 'スマホのセンサーを有効にしてください。',
+  requesting: 'センサーの許可を確認しています…',
+  waiting: 'センサーの値を待っています…',
+  streaming: 'スマホのセンサーで接続中',
+  insecure: 'センサーにはHTTPSが必要です。HTTPSのURLで開いてください。',
+  unsupported: 'このブラウザーはセンサーに対応していません。スマホのSafariやChromeで開いてください。',
+  denied: 'センサーが許可されていません。サイトの設定で許可してから再度お試しください。',
+  unavailable: '加速度・ジャイロの値を取得できません。設定を確認して再接続するか、タップで攻撃してください。',
+  paused: 'センサーを一時停止しました。再開するには有効化ボタンを押してください。',
+  stopped: 'センサーを停止しました。タップで攻撃できます。',
+};
+let lastSensorDisplayAt = 0;
+const motionReader = window.MetsuMotion.createReader({
+  onSample(sample) {
+    const now = Date.now();
+    if (now - lastSensorDisplayAt >= 150) {
+      lastSensorDisplayAt = now;
+      const readings = document.getElementById('sensor-readings');
+      const format = vector => ['x', 'y', 'z'].map(axis => vector[axis].toFixed(2)).join(', ');
+      if (readings) readings.textContent =
+        `加速度（重力込み）[G]: ${format(sample.accel)}\n重力${sample.estimatedGravity ? '（推定）' : ''} [G]: ${format(sample.gravity)}\nジャイロ [rad/s]: ${format(sample.gyro)}`;
     }
-  };
+    handleSensorSample(sample);
+  },
+  onStatus(status) {
+    const statusEl = document.getElementById('motion-status');
+    if (statusEl) statusEl.textContent = motionStatusMessages[status];
+    document.getElementById('sensor-start-btn').disabled = ['requesting', 'waiting', 'streaming'].includes(status);
+    document.getElementById('sensor-stop-btn').disabled = !['requesting', 'waiting', 'streaming'].includes(status);
+    document.getElementById('sensor-calibrate-btn').disabled = status !== 'streaming';
+    if (status === 'streaming') {
+      if (sensorAttackActive && hp > 0) startSensorAttackDetection();
+    } else {
+      sensorAttackEnabled = false;
+      sensorStillSince = null;
+      setAttackAvailability(false);
+      const hint = document.getElementById('attack-hint');
+      if (hint) hint.innerText = 'モンスターをタップしても攻撃できます。';
+      document.getElementById('sensor-readings').textContent = '加速度・重力・ジャイロ: --';
+    }
+  },
+});
+
+function showSensorCalibrationHint() {
+  const hint = document.getElementById('attack-hint');
+  if (hint) hint.innerText = motionReader.running
+    ? 'スマホを1.5秒静止して調整してください。'
+    : 'センサーを有効にするか、モンスターをタップして攻撃できます。';
 }
 
-// 既存のZigセンサー接続を閉じて、攻撃検知を安全に切り離す関数。
-function disconnectZigSim() {
-  if (zigSocket) {
-    try { zigSocket.close(); } catch (err) { }
-    zigSocket = null;
-  }
-}
-
-// Zigの攻撃検知を開始し、初期状態と接続を準備する関数。
-function startZigAttackDetection() {
-  zigAttackActive = true;
-  zigMotionState = 'ready';
-  zigAttackEnabled = false;
-  zigAwaitingStillness = zigRequireStillnessBeforeAttack;
-  zigStillSince = null;
-  zigPreviousGravity = null;
-  zigLastHitAt = null;
-  zigSensorBaseline = null;
-  zigSwingAxis = null;
-  zigLastTilt = null;
-  zigTiltDirection = 0;
-  zigTurningPoint = 0;
-  zigTiltPeaks = { positive: null, negative: null };
-  setAttackAvailability(false);
-  connectZigSim();
-}
-
-// Zigの攻撃検知を止め、状態変数とセンサー接続の状態をリセットする関数。
-function stopZigAttackDetection() {
-  zigAttackActive = false;
-  zigMotionState = 'ready';
-  zigAttackEnabled = false;
-  zigAwaitingStillness = false;
-  zigStillSince = null;
-  zigPreviousGravity = null;
-  zigLastHitAt = null;
-  zigSensorBaseline = null;
-  zigSwingAxis = null;
-  zigLastTilt = null;
-  zigTiltDirection = 0;
-  zigTurningPoint = 0;
-  zigTiltPeaks = { positive: null, negative: null };
-  setAttackAvailability(false);
-}
+function stopPhoneSensors() { motionReader.stop(); }
+document.getElementById('sensor-start-btn').addEventListener('click', () => motionReader.start());
+document.getElementById('sensor-stop-btn').addEventListener('click', stopPhoneSensors);
+document.getElementById('sensor-calibrate-btn').addEventListener('click', () => {
+  if (sensorAttackActive && hp > 0) startSensorAttackDetection();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) motionReader.stop('paused');
+});
+window.addEventListener('pagehide', stopPhoneSensors);
 
 // 現在のHP値をバーと表示テキストへ反映し、モンスター画像の見た目も更新する関数。
 function syncHpUi() {
@@ -621,7 +618,8 @@ function finalizeBattleResult() {
 
 // 討伐結果画面へ遷移するための画面切り替え用関数。
 function showReplayScreen() {
-  stopZigAttackDetection();
+  stopSensorAttackDetection();
+  motionReader.stop();
   window.location.href = 'result.html';
 }
 
@@ -630,8 +628,7 @@ function showReplayScreen() {
 function destroyMonster() {
   finalizeBattleResult();
   const hasNext = typeof hasNextMonster === 'function' && hasNextMonster();
-  zigRequireStillnessBeforeAttack = hasNext;
-  stopZigAttackDetection();
+  stopSensorAttackDetection();
   const effectsLayer = hasNext ? null : playDefeatCelebration();
   if (window.MetsuAudio) MetsuAudio.defeat(hasNext);
   const monsterEl = getElement('monster');

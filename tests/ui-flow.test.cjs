@@ -42,6 +42,7 @@ function app(page, saved = null) {
   const timers = [];
   const state = new Map(saved ? [['metsuBattleData', JSON.stringify(saved)]] : []);
   const document = {
+    addEventListener() { },
     getElementById: (id) => elements.get(id) || null,
     querySelectorAll: (selector) => selector.includes('#input-screen')
       ? [...elements.values()].filter(e => ['BUTTON', 'TEXTAREA', 'INPUT'].includes(e.tagName)) : [],
@@ -65,17 +66,21 @@ function app(page, saved = null) {
   };
   const context = vm.createContext({
     document, console, navigator: {}, location: { hostname: 'localhost' },
+    SECRETS: { SPEECH_API_KEY: 'test-only', AUDIO_API_KEY: 'test-only' },
+    AbortController,
     sessionStorage: { getItem: k => state.get(k) || null, setItem: (k, v) => state.set(k, v), removeItem: k => state.delete(k) },
     setTimeout: fn => { timers.push(fn); return timers.length; }, clearTimeout() { },
     setInterval() { return 1; }, clearInterval() { }, Event: class { constructor(type) { this.type = type; } },
     alert() { throw Error('Unexpected alert'); },
     fetch() { throw Error('Unexpected network request'); },
   });
-  context.window = { location: { href: page }, innerWidth: 1280, innerHeight: 800, addEventListener() { } };
-  for (const [, source] of markup.matchAll(/<script src="([^"]+)"/g)) {
+  context.window = { location: { href: page }, innerWidth: 1280, innerHeight: 800, addEventListener() { }, removeEventListener() { } };
+  for (const [, source] of markup.matchAll(/<script(?: type="module")? src="([^"]+)"/g)) {
+    // Audio has its own widget/DOM requirements and is outside this flow adapter.
+    if (source === 'audio.js') continue;
     // Initialize explicitly below, after all modules are loaded.
     let code = fs.readFileSync(path.join(root, source), 'utf8');
-    if (source === 'script.js') code = code.replace('  initializeBattlePage();', '  /* initialized by test */');
+    if (source === 'script.js') code = code.replace("import { SECRETS } from './api.js';", '').replace('  initializeBattlePage();', '  /* initialized by test */');
     vm.runInContext(code, context, { filename: source });
   }
   return { context, elements, state, timers, run: code => vm.runInContext(code, context) };
@@ -193,12 +198,12 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   await a.run('initializeBattlePage()');
   const initialHp = a.run('hp');
   a.elements.get('monster').listeners.click({ type: 'click' });
-  assert.equal(a.run('hp'), initialHp - 18);
-  assert.equal(a.elements.get('attack-count').textContent, '01');
-  a.elements.get('attack-button').listeners.click({ type: 'click' });
-  assert.equal(a.run('hp'), initialHp - 36);
-  assert.equal(a.elements.get('attack-count').textContent, '02');
-  assert.equal(a.elements.get('hp-bar').attributes['aria-valuenow'], String(initialHp - 36));
+  assert.equal(a.run('hp'), initialHp - 14);
+  assert.equal(a.run('attackCount'), 1);
+  a.elements.get('monster').listeners.click({ type: 'click' });
+  assert.equal(a.run('hp'), initialHp - 28);
+  assert.equal(a.run('attackCount'), 2);
+  assert.equal(a.elements.get('hp-bar').attributes['aria-valuenow'], String(initialHp - 28));
   a.run('hp = 1; attackMonster(); attackMonster(); attackMonster();');
   assert.equal(a.run('hp'), 0);
   assert.equal(a.run('monsterQueueIndex'), 0);
@@ -206,7 +211,9 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   assert.equal(a.context.document.body.children.some(element => element.className === 'defeat-effects-layer'), false);
   assert.equal(a.context.document.body.children.some(element => element.className === 'image-shard'), false);
   assert.equal(a.elements.get('monster').classList.contains('monster-dissolving'), false);
-  for (const fn of a.timers.splice(0)) await fn();
+  for (let step = 0; step < 4 && a.run('monsterQueueIndex') === 0; step++) {
+    for (const fn of a.timers.splice(0)) await fn();
+  }
   assert.equal(a.run('monsterQueueIndex'), 1);
   assert.ok(a.run('hp') > 0);
   assert.equal(a.elements.get('monster').attributes['data-state'], undefined);
@@ -217,7 +224,9 @@ test('battle HP, repeated clicks, queue transition and replay work', async () =>
   a.run('hp = 1; attackMonster();');
   assert.ok(a.context.document.body.children.some(element => element.className === 'defeat-effects-layer'));
   assert.notEqual(a.context.window.location.href, 'result.html');
-  for (const fn of a.timers.splice(0)) await fn();
+  for (let step = 0; step < 4 && a.context.window.location.href !== 'result.html'; step++) {
+    for (const fn of a.timers.splice(0)) await fn();
+  }
   assert.equal(a.context.window.location.href, 'result.html');
   const result = app('result.html', { rawText: 'old' });
   result.elements.get('replay-btn').listeners.click();
@@ -272,29 +281,34 @@ test('defeat celebration displays a victory banner and bursts of colorful sparks
   assert.ok(sparks.some(spark => parseFloat(spark.style['--spark-x']) > 0));
 });
 
-test('Zig attack availability remains visible in both unavailable and ready states', () => {
+test('phone samples require stillness before a calibrated attack and recalibrate for the next monster', () => {
   const a = app('battle.html');
-  a.run('let testNow = 0; Date.now = () => testNow; startZigAttackDetection();');
-  const attackReady = a.elements.get('attack-ready');
-  assert.equal(attackReady.innerText, '攻撃不可');
-  assert.equal(attackReady.hidden, false);
-
-  a.run("handleZigSimData(JSON.stringify({ accel: { z: 0 }, gyro: { x: 0 }, gravity: { y: 1 } })); testNow = 1500; handleZigSimData(JSON.stringify({ accel: { z: 0 }, gyro: { x: 0 }, gravity: { y: 1 } }));");
-  assert.equal(attackReady.innerText, '攻撃可能');
-  assert.equal(attackReady.hidden, false);
-
-  a.run("handleZigSimData(JSON.stringify({ accel: { z: -1 }, gyro: { x: -1 }, gravity: { y: 1 } }));");
-  assert.equal(attackReady.innerText, '攻撃不可');
-  assert.equal(attackReady.hidden, false);
-});
-
-test('Zig attack detection supports nested payloads and side-on impact axes', () => {
-  const a = app('battle.html');
-  a.run('let testNow = 0; Date.now = () => testNow; startZigAttackDetection();');
-  a.run("testNow = 1500; handleZigSimData(JSON.stringify({ sensordata: { accel: { y: -1.2 }, gyro: { x: -0.7 }, gravity: { y: 1.0 } } }));");
-  const attackReady = a.elements.get('attack-ready');
-  assert.equal(attackReady.innerText, '攻撃不可');
-  assert.equal(attackReady.hidden, false);
+  a.run(`
+    let testNow = 0; Date.now = () => testNow;
+    const hitPowers = []; attackMonster = power => hitPowers.push(power);
+    const normalizer = window.MetsuMotion.createNormalizer();
+    const still = { accelerationIncludingGravity: {x:0,y:0,z:9.80665},
+      acceleration: {x:0,y:0,z:0}, rotationRate: {alpha:0,beta:0,gamma:0} };
+    const hit = { accelerationIncludingGravity: {x:9.80665,y:0,z:9.80665},
+      acceleration: {x:9.80665,y:0,z:0}, rotationRate: {alpha:0,beta:90,gamma:0} };
+    startSensorAttackDetection();
+    handleSensorSample(normalizer.read(hit));
+  `);
+  assert.equal(a.run('hitPowers.length'), 0);
+  assert.equal(a.run('sensorAttackEnabled'), false);
+  a.run(`handleSensorSample(normalizer.read(still));
+    testNow=100; handleSensorSample(normalizer.read(still));
+    testNow=1600; handleSensorSample(normalizer.read(still));`);
+  assert.equal(a.run('sensorAttackEnabled'), true);
+  assert.equal(a.elements.get('attack-ready').hidden, false);
+  a.run('testNow=1700; handleSensorSample(normalizer.read(hit));');
+  assert.equal(a.run('hitPowers.length'), 1);
+  assert.equal(a.run('hitPowers[0]'), 1.25);
+  a.run('stopSensorAttackDetection(); handleSensorSample(normalizer.read(hit));');
+  assert.equal(a.run('hitPowers.length'), 1);
+  a.run('startSensorAttackDetection(); handleSensorSample(normalizer.read(hit));');
+  assert.equal(a.run('sensorAttackEnabled'), false);
+  assert.equal(a.run('hitPowers.length'), 1);
 });
 
 test('result page renders stored battle result details', () => {
@@ -315,7 +329,8 @@ test('result page renders stored battle result details', () => {
   r.run('renderResultScreen()');
   assert.equal(r.elements.get('reset-msg').innerText, '『勉強』を討伐した！');
   assert.equal(r.elements.get('result-time').innerText, '1.23秒');
-  assert.equal(r.elements.get('result-attack-count').innerText, '3 回');
+  assert.equal(r.elements.get('result-total-damage').innerText, '54');
+  assert.equal(r.elements.get('result-avg-damage').innerText, '18');
   assert.equal(r.elements.has('result-source-text'), false);
 });
 
