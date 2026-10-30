@@ -76,6 +76,38 @@ function renderResultScreen() {
   if (audioAnalysisPanel) audioAnalysisPanel.hidden = !audioAnalysisText;
   setText('result-audio-analysis', audioAnalysisText);
 
+  if (window.MetsuAccount && !window.MetsuAccount.read('metsuBattleData')?.ownerId) {
+    // Guest result is displayed from memory, then discarded rather than archived.
+    sessionStorage.removeItem('metsuBattleData');
+    sessionStorage.removeItem(RESULT_DATA_KEY);
+    setText('history-save-status', 'ゲストモード：このプレイの履歴は保存されません。');
+  }
+
 }
 
 renderResultScreen();
+
+if (window.MetsuAccount) {
+  const retry = document.getElementById('retry-save');
+  async function saveHistory() {
+    if (!window.MetsuAccount.read('metsuPendingHistory', []).length) return;
+    retry.hidden = true;
+    setText('history-save-status', '履歴を保存しています…');
+    try {
+      await window.MetsuAccount.flushHistory();
+      setText('history-save-status', '履歴に保存しました。ホームで振り返れます。');
+    } catch (error) {
+      setText('history-save-status', `未保存：${error.message} このタブを閉じる前に再試行してください。`);
+      retry.hidden = false;
+    }
+  }
+  retry.addEventListener('click', saveHistory);
+  if (window.MetsuAccount.read('metsuBattleData')?.ownerId) {
+    if (window.MetsuAccount.read('metsuPendingHistory', []).length) saveHistory();
+    else {
+      const battle = window.MetsuAccount.read('metsuBattleData');
+      const saved = window.MetsuAccount.read('metsuSavedHistory', []).includes(`${battle.runId}_${battle.queueIndex || 0}`);
+      setText('history-save-status', saved ? '履歴に保存しました。ホームで振り返れます。' : '保存を確認できませんでした。ホームで履歴を確認してください。');
+    }
+  }
+}

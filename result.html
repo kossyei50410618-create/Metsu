@@ -8,6 +8,7 @@
     <title>Metsuーモヤモヤ討伐クリアー</title>
     <link rel="icon" href="assets/favicon.png" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="flow.css">
 </head>
 
 <body class="result-page">
@@ -39,8 +40,11 @@
                 <p id="result-audio-analysis" class="result-audio-analysis"></p>
             </section>
         </div>
+        <p id="history-save-status" class="flow-status" role="status"></p>
+        <button id="retry-save" class="text-button" type="button" hidden>保存を再試行</button>
         <a id="replay-btn" class="button primary" href="index.html">ホームに戻る</a>
     </main>
+    <script src="account.js"></script>
     <script type="module" src="script.js"></script>
     <script src="audio.js"></script>
     <script src="result.js"></script>

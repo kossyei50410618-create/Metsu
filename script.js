@@ -50,18 +50,20 @@ const CORRECTION_DICT = {
 const LEARNED_DICT_KEY = 'speechLearnedCorrections';
 
 function loadLearnedDict() {
+  if (window.MetsuAccount?.guest) return {};
   try {
-    return JSON.parse(localStorage.getItem(LEARNED_DICT_KEY)) || {};
+    return JSON.parse(sessionStorage.getItem(`${LEARNED_DICT_KEY}:${window.MetsuAccount?.user?.id || 'legacy'}`)) || {};
   } catch (e) {
     return {};
   }
 }
 
 function saveLearnedDict(dict) {
+  if (window.MetsuAccount?.guest) return;
   try {
     // 肥大化を防ぐため新しい200件までに制限
     const entries = Object.entries(dict).slice(-200);
-    localStorage.setItem(LEARNED_DICT_KEY, JSON.stringify(Object.fromEntries(entries)));
+    sessionStorage.setItem(`${LEARNED_DICT_KEY}:${window.MetsuAccount?.user?.id || 'legacy'}`, JSON.stringify(Object.fromEntries(entries)));
   } catch (e) { /* 保存できなくても動作は続ける */ }
 }
 
@@ -127,6 +129,7 @@ function sleep(ms) {
 function resetToInputScreen(event) {
   event?.preventDefault();
   sessionStorage.removeItem('metsuBattleData');
+  sessionStorage.removeItem('metsuResultData');
   window.location.href = 'index.html';
 }
 
@@ -274,20 +277,6 @@ function normalizeSpeechTranscript(transcript) {
 
 function isSpeechRecognitionSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-}
-
-async function requestMicrophonePermission() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
-  try {
-    // 【修正】mic.js と同じノイズ抑制設定で権限を取得する
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: window.MIC_AUDIO_CONSTRAINTS || true,
-    });
-    stream.getTracks().forEach((track) => track.stop());
-    return true;
-  } catch (error) {
-    return false;
-  }
 }
 
 // ==============================
@@ -439,10 +428,19 @@ async function listen(allowBiasing = true, onInterim = null) {
         resolve(listen(false, onInterim));
         return;
       }
-      if (event.error === "no-speech" || event.error === "aborted") {
+      if (event.error === 'no-speech' ||
+          (event.error === 'aborted' && (finalSegments.length || interimText))) {
         finish();
       } else {
-        fail(new Error(`音声認識エラー: ${event.error}`));
+        const messages = {
+          'not-allowed': 'マイクまたは音声入力が許可されていません。ブラウザーのサイト設定を確認してください。',
+          'service-not-allowed': 'このブラウザーでは音声入力を利用できません。別のブラウザーか文字入力をお試しください。',
+          'audio-capture': 'マイクを取得できません。通話や録音を終了して、もう一度お試しください。',
+          'network': '音声認識サービスに接続できません。通信環境を確認して、もう一度お試しください。',
+          'aborted': 'ブラウザーが音声入力を中断しました。もう一度音声ボタンを押すか、文字で入力してください。',
+          'language-not-supported': '日本語の音声認識を利用できません。別のブラウザーか文字入力をお試しください。',
+        };
+        fail(new Error(messages[event.error] || `音声認識エラー: ${event.error}`));
       }
     };
 
@@ -601,42 +599,29 @@ async function startRecognition() {
     return;
   }
 
-  const hasMicAccess = await requestMicrophonePermission();
-  if (!hasMicAccess) {
-    status.innerText = 'マイクのアクセス許可が必要です。ブラウザの設定を確認してください。';
-    updatePipelineStage('マイク許可が拒否されました');
+  if (window.isSecureContext === false) {
+    status.innerText = '音声入力にはHTTPSが必要です。HTTPSのURLで開くか、文字で入力してください。';
+    updatePipelineStage('安全な接続が必要です');
     return;
   }
+  // Recognition owns capture. Start directly from the click on mobile.
+  stopMicMeter();
 
   updatePipelineStage('ステップ 1/4: 音声をテキスト化しています');
   status.innerText = '録音中... 話してください。';
 
   try {
-    const recognized = await listen(true, (heard) => {
+    const recognized = await listen(false, (heard) => {
       status.innerText = `録音中... 「${heard}」`;
     });
     window.stopMicVolumeCollection();
 
-    // 音響特徴量はマイクを止める前に取得しておく
-    const audioStats = typeof window.getMicSessionStats === 'function'
-      ? window.getMicSessionStats()
-      : null;
+    const audioStats = null; // Diagnostic capture is separate from dictation.
 
     const segments = recognized.segments.filter((cands) => cands.length > 0 && cands[0].text);
     if (segments.length === 0) {
       status.innerText = '音声が聞き取れませんでした。もう一度お話しください。';
-      updatePipelineStage('音声入力がキャンセルされました。');
-      return;
-    }
-
-    // 【追加】声が小さすぎる／雑音だけの場合は、誤認識を避けるため聞き返す
-    if (
-      audioStats &&
-      Number.isFinite(audioStats.maxVolume) &&
-      audioStats.maxVolume < CONFIG.MIN_SPEECH_VOLUME
-    ) {
-      status.innerText = '声がよく聞き取れませんでした。マイクに近づいて、もう少し大きな声でお話しください。';
-      updatePipelineStage('音声入力がキャンセルされました。');
+      updatePipelineStage('音声を確認できませんでした。もう一度お試しください。');
       return;
     }
 
@@ -647,7 +632,7 @@ async function startRecognition() {
 
     if (!normalizedTranscript) {
       status.innerText = '音声が聞き取れませんでした。もう一度お話しください。';
-      updatePipelineStage('音声入力がキャンセルされました。');
+      updatePipelineStage('音声を確認できませんでした。もう一度お試しください。');
       return;
     }
 
@@ -733,14 +718,13 @@ async function runInputAction(useVoice) {
   error.textContent = '';
   const activeButton = useVoice ? voiceBtn : generateBtn;
   const originalMarkup = activeButton.innerHTML;
-  const controls = document.querySelectorAll('#input-screen button, #input-screen textarea, #input-screen input');
+  const controls = document.querySelectorAll('#input-screen button, #input-screen textarea, #input-screen input, #back-to-modes');
   const disabledStates = Array.from(controls, (control) => control.disabled);
   controls.forEach((control) => { control.disabled = true; });
   getElement('input-screen').setAttribute('aria-busy', 'true');
   activeButton.textContent = useVoice ? '音声入力中…' : 'モンスターを準備中…';
   try {
     if (useVoice) {
-      await initMicMeter();
       await startRecognition();
     } else {
       updatePipelineStage('モンスターを準備しています…');

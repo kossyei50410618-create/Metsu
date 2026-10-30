@@ -179,6 +179,7 @@ async function generateMonster(analysisText = null, audioAnalysisText = '') {
     // 討伐結果画面で使うため、音量の最大値と声のトーンの平均もここで確定させて引き継ぐ
     const micStats = (typeof window.getMicSessionStats === 'function') ? window.getMicSessionStats() : null;
     saveBattleData({
+      ...(window.MetsuAccount ? window.MetsuAccount.newRun() : {}),
       rawText: rawText || storedData?.rawText || sourceText,
       analysisText: normalizedAnalysisText || storedData?.analysisText || '',
       audioAnalysisText: audioAnalysisText || storedData?.audioAnalysisText || '',
@@ -323,6 +324,7 @@ async function initializeBattlePage() {
     return;
   }
   await generateMonster();
+  motionReader.start();
 }
 
 function setWeakSpot(type) {

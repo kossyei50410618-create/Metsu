@@ -8,6 +8,7 @@ FILES = (
     "index.html", "battle.html", "result.html", "style.css",
     "audio.js", "mic.js", "category.js", "monster.js", "motion.js",
     "battle.js", "script.js", "ui.js", "result.js",
+    "account.js", "lobby.js", "gestures.js", "flow.css",
 )
 
 

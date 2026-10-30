@@ -77,7 +77,7 @@ function app(page, saved = null) {
   context.window = { location: { href: page }, innerWidth: 1280, innerHeight: 800, addEventListener() { }, removeEventListener() { } };
   for (const [, source] of markup.matchAll(/<script(?: type="module")? src="([^"]+)"/g)) {
     // Audio has its own widget/DOM requirements and is outside this flow adapter.
-    if (source === 'audio.js') continue;
+    if (['audio.js', 'account.js', 'lobby.js'].includes(source)) continue;
     // Initialize explicitly below, after all modules are loaded.
     let code = fs.readFileSync(path.join(root, source), 'utf8');
     if (source === 'script.js') code = code.replace("import { SECRETS } from './api.js';", '').replace('  initializeBattlePage();', '  /* initialized by test */');
@@ -182,11 +182,89 @@ test('unsupported voice input leaves text entry available', async () => {
   assert.equal(a.elements.get('mic-calibrate-btn').disabled, true);
 });
 
-test('index page exposes the mic diagnostic panel at load time', () => {
+test('mic diagnostics remain available inside a collapsed disclosure', () => {
   const markup = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(markup, /<details class="mic-settings" open>/);
+  assert.match(markup, /<details class="mic-settings">/);
   assert.match(markup, /id="mic-tone-frequency"/);
   assert.match(markup, /id="mic-intonation-value"/);
+});
+
+test('voice capture starts synchronously without a second microphone stream', async () => {
+  const a = app('index.html');
+  a.run(`
+    let recognition;
+    navigator.mediaDevices = { getUserMedia() { throw Error('Duplicate capture'); } };
+    window.SpeechRecognition = class {
+      constructor() { recognition = this; }
+      start() { this.started = true; this.onstart(); }
+      stop() {}
+    };
+  `);
+  const pending = a.run('runInputAction(true)');
+  assert.equal(a.run('recognition.started'), true);
+  a.run("recognition.onerror({ error: 'not-allowed' });");
+  await pending;
+  assert.match(a.elements.get('mic-status').innerText, /許可/);
+  assert.equal(a.elements.get('voice-btn').disabled, false);
+});
+
+test('empty recognition and browser abort are not reported as user cancellation', async () => {
+  for (const reason of ['no-speech', 'aborted', 'network', 'audio-capture']) {
+    const a = app('index.html');
+    a.context.reason = reason;
+    a.run(`window.SpeechRecognition = class {
+      start() { this.onstart(); this.onerror({ error: reason }); }
+      stop() {}
+    };`);
+    await a.run('runInputAction(true)');
+    assert.doesNotMatch(a.elements.get('pipeline-stage').innerText, /キャンセル/);
+    assert.ok(a.elements.get('mic-status').innerText.length);
+    assert.equal(a.elements.get('input-text').disabled, false);
+  }
+});
+
+test('recognized words reach generation even without diagnostic volume', async () => {
+  const a = app('index.html');
+  a.run(`
+    CONFIG.CONFIRM_MODE = 'never';
+    analyzeSpeechText = async () => '';
+    sleep = async () => {};
+    let generated = false;
+    generateMonster = async () => { generated = true; };
+    window.SpeechRecognition = class {
+      start() {
+        this.onstart();
+        const result = [{ transcript: '仕事がつらい', confidence: 0.95 }];
+        result.isFinal = true;
+        this.onresult({ resultIndex: 0, results: [result] });
+        this.onend();
+      }
+      stop() {}
+    };
+  `);
+  await a.run('runInputAction(true)');
+  assert.equal(a.elements.get('input-text').value, '仕事がつらい');
+  assert.equal(a.run('generated'), true);
+});
+
+test('battle auto-checks motion permission and denial keeps tap attacks available', async () => {
+  const a = app('battle.html', { rawText: 'test', queue: [{ key: 'normal', monster: 'normal' }] });
+  a.run(`
+    let permissionChecks = 0;
+    window.isSecureContext = true;
+    window.DeviceMotionEvent = { requestPermission() {
+      permissionChecks++;
+      return Promise.resolve('denied');
+    } };
+  `);
+  await a.run('initializeBattlePage()');
+  assert.equal(a.run('permissionChecks'), 1);
+  assert.equal(a.run('motionReader.running'), false);
+  assert.equal(a.elements.has('sensor-start-btn'), false);
+  assert.equal(a.elements.get('attack-ready').hidden, true);
+  const hp = a.run('hp');
+  a.elements.get('monster').listeners.click({ type: 'click' });
+  assert.ok(a.run('hp') < hp);
 });
 
 test('battle HP, repeated clicks, queue transition and replay work', async () => {
@@ -332,6 +410,26 @@ test('result page renders stored battle result details', () => {
   assert.equal(r.elements.get('result-total-damage').innerText, '54');
   assert.equal(r.elements.get('result-avg-damage').innerText, '18');
   assert.equal(r.elements.has('result-source-text'), false);
+});
+
+test('selected hand modes route samples through their own detector instead of the bag algorithm', () => {
+  for (const mode of ['punch', 'shake']) {
+    const a = app('battle.html', { rawText: 'test', mode });
+    a.run(`
+      let gestureTime = 0; Date.now = () => gestureTime;
+      const gestureHits = []; attackMonster = power => gestureHits.push(power);
+      const handSample = x => ({ accel: { x, y: 0, z: 1 }, gravity: { x: 0, y: 0, z: 1 }, gyro: { x: 0, y: 0, z: 0 } });
+      startSensorAttackDetection();
+      for (gestureTime = 0; gestureTime <= 800; gestureTime += 100) handleSensorSample(handSample(0));
+      gestureTime = 900; handleSensorSample(handSample(1));
+    `);
+    if (mode === 'shake') {
+      assert.equal(a.run('gestureHits.length'), 0);
+      a.run('gestureTime = 1100; handleSensorSample(handSample(-1));');
+    }
+    assert.equal(a.run('gestureHits.length'), 1);
+    assert.equal(a.elements.get('attack-ready').hidden, false);
+  }
 });
 
 test('direct battle access without input returns home', async () => {

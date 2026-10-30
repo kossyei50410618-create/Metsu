@@ -8,6 +8,7 @@
     <title>Metsuーモヤモヤ討伐ロビー</title>
     <link rel="icon" href="assets/favicon.png" type="image/svg+xml">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="flow.css">
 </head>
 
 <body class="lobby-page">
@@ -19,13 +20,60 @@
     <main class="shell game-main">
         <div class="lobby-heading">
             <div>
-                <p class="eyebrow">STRESS BREAKER / METSU</p>
                 <h1>そのモヤモヤを、<span>討伐せよ。</span></h1>
             </div>
-            <p>気持ちを言葉に。モンスターを召喚。<br>パンチングボールを叩いて、モヤモヤを撃破。</p>
         </div>
+        <p id="account-status" class="flow-status" role="status">準備しています…</p>
+        <section id="welcome-screen" class="flow-card welcome-card" hidden aria-label="はじめる">
+            <div class="welcome-emblem" aria-hidden="true">滅</div>
+            <h2>自分のペースで、はじめよう。</h2>
+            <button id="guest-btn" class="button primary" type="button">ゲストで遊ぶ <span aria-hidden="true">→</span></button>
+            <p class="quiet">登録なし・プレイ履歴を残さない</p>
+            <div class="auth-choices">
+                <button id="show-login" class="button secondary" type="button">ログイン</button>
+                <button id="show-register" class="button secondary" type="button">新規登録</button>
+            </div>
+            <p class="quiet">アカウントで、気持ちの変化と討伐の記録を。</p>
+            <form id="auth-form" hidden>
+                <h3 id="auth-title">ログイン</h3>
+                <label for="username">ユーザー名</label>
+                <input id="username" name="username" autocomplete="username" minlength="3" maxlength="32" required aria-describedby="auth-help">
+                <label for="password">パスワード</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" required aria-describedby="auth-help">
+                <p id="auth-help" class="quiet">ユーザー名は3〜32文字、パスワードは10文字以上。パスワードは忘れないよう保管してください。</p>
+                <p id="auth-error" class="error-message" role="alert"></p>
+                <button id="auth-submit" class="button primary" type="submit">ログイン</button>
+            </form>
+        </section>
+        <section id="dashboard-screen" hidden aria-label="マイページ">
+            <div class="dashboard-heading"><div><p id="identity-label" class="eyebrow"></p><h2 id="dashboard-title">今日は、どう遊ぶ？</h2></div><button id="leave-btn" class="text-button" type="button">ログアウト</button></div>
+            <section id="history-panel" class="flow-card" hidden aria-labelledby="history-title">
+                <div class="section-title"><h3 id="history-title">これまでの記録</h3><button id="refresh-history" class="text-button" type="button">更新</button></div>
+                <p id="history-status" class="flow-status" role="status"></p>
+                <div class="history-stats"><div><strong id="history-games">0</strong><span>プレイ</span></div><div><strong id="history-monsters">0</strong><span>討伐数</span></div><div><strong id="history-time">0分</strong><span>バトル時間</span></div></div>
+                <div class="section-title trend-heading"><h3>気持ちの振り返り</h3><select id="history-range" aria-label="振り返り期間"><option value="30">30日間</option><option value="90">90日間</option><option value="0">全期間</option></select></div>
+                <p id="stress-insight" class="quiet"></p>
+                <div id="stress-trend" class="stress-trend" aria-label="日ごとのストレス自己評価"></div>
+                <p class="chart-note">自己評価の平均（1〜5）。最近1,000プレイを集計。遊んでいない日の気持ちは含みません。</p>
+                <details class="history-details"><summary>対戦したモンスターを見る</summary><ul id="history-list" class="history-list"></ul><button id="more-history" class="text-button" type="button" hidden>もっと見る</button></details>
+                <details class="history-manage"><summary>履歴の管理</summary><p class="quiet">削除した記録は元に戻せません。</p><button id="delete-history" class="text-button" type="button">自分の履歴をすべて削除</button><div id="delete-confirm" hidden><p>すべての履歴を削除しますか？</p><button id="confirm-delete" class="button secondary" type="button">削除する</button><button id="cancel-delete" class="text-button" type="button">戻る</button></div></details>
+            </section>
+            <section class="flow-card mode-panel" aria-labelledby="mode-title">
+                <h3 id="mode-title">遊び方を選ぶ</h3>
+                <fieldset class="mode-options"><legend class="sr-only">プレイスタイル</legend>
+                    <label class="mode-option"><input type="radio" name="play-style" value="hand" checked><span><strong>手で動かす</strong><small>スマホを手に持ってプレイ</small></span><span aria-hidden="true">✦</span></label>
+                    <label class="mode-option"><input type="radio" name="play-style" value="bag"><span><strong>パンチングバッグ</strong><small>取り付けたスマホの揺れでプレイ</small></span><span aria-hidden="true">◈</span></label>
+                </fieldset>
+                <fieldset id="hand-modes" class="hand-modes"><legend>手の動かし方</legend><label><input type="radio" name="hand-mode" value="punch" checked> パンチ</label><label><input type="radio" name="hand-mode" value="shake"> シェイク</label></fieldset>
+                <p id="mode-help" class="quiet">スマホをしっかり持ち、周囲に物や人がいない場所で軽く動かしてください。タップでも遊べます。</p>
+                <div id="stress-control" hidden><label for="stress-level">今のモヤモヤは？ <output id="stress-value" for="stress-level">3 / 5</output></label><input id="stress-level" type="range" min="1" max="5" value="3"><div class="range-labels"><span>1 ほとんどない</span><span>5 とても強い</span></div><p class="quiet">今回の自己評価として履歴に残します。</p></div>
+                <button id="choose-mode" class="button primary" type="button">このモードで進む <span aria-hidden="true">→</span></button>
+                <p id="mode-status" class="flow-status" role="status"></p>
+            </section>
+        </section>
+        <div id="input-navigation" class="input-navigation" hidden><button id="back-to-modes" class="text-button" type="button">← 遊び方に戻る</button><span id="selected-mode-label"></span></div>
         <div class="game-layout">
-            <section id="input-screen" class="hud-panel input-card" aria-labelledby="input-title">
+            <section id="input-screen" class="hud-panel input-card" aria-labelledby="input-title" hidden>
                 <div class="panel-heading"><span class="panel-symbol" aria-hidden="true">▧</span>
                     <h2 id="input-title">召喚コンソール</h2><span class="panel-code">INPUT</span>
                 </div>
@@ -36,8 +84,8 @@
                     <div id="input-actions"><button id="generate-btn" class="button primary" type="button"><span>討伐開始</span><span class="button-en">BATTLE START</span><span aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary" type="button">🎤 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
                     <p id="pipeline-stage" role="status" aria-live="polite"></p>
                     <p id="mic-status" class="mic-status" role="status" aria-live="polite"></p>
-                    <details class="mic-settings" open>
-                        <summary>マイク設定</summary>
+                    <details class="mic-settings">
+                        <summary>マイクの確認・調整</summary>
                         <div id="mic-meter">
                             <div class="mic-meter-controls"><button id="mic-start-btn" type="button">マイク確認</button><button id="mic-calibrate-btn" type="button" disabled>環境音調整</button><button id="mic-stop-btn" type="button">停止</button></div>
                             <div class="mic-meter-display"><span>音量</span>
@@ -55,12 +103,14 @@
             </section>
         </div>
     </main>
+    <script src="account.js"></script>
     <script src="audio.js"></script>
     <script src="mic.js"></script>
     <script src="category.js"></script>
     <script src="monster.js"></script>
     <script type="module" src="script.js"></script>
     <script src="ui.js"></script>
+    <script src="lobby.js"></script>
 </body>
 
 </html>

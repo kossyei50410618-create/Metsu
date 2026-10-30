@@ -1,0 +1,20 @@
+{
+  "name": "metsu",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.cjs",
+    "test:browser": "node tests/browser-flow.cjs",
+    "test": "node --test tests/motion.test.cjs tests/ui-flow.test.cjs tests/server.test.cjs tests/gestures.test.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
+  }
+}

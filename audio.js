@@ -531,7 +531,7 @@
   <label>BGM <input type="range" id="metsu-bgm-vol" min="0" max="1" step="0.05" aria-label="BGM音量"></label>
   <label>効果音 <input type="range" id="metsu-sfx-vol" min="0" max="1" step="0.05" aria-label="効果音の音量"></label>
 </div>`;
-    document.body.appendChild(widget);
+    (document.querySelector('.site-header') || document.body).appendChild(widget);
 
     const toggle = widget.querySelector('.ma-toggle');
     const bgmSlider = widget.querySelector('#metsu-bgm-vol');

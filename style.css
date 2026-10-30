@@ -881,7 +881,7 @@ summary>span {
 .battle-layout {
     flex: 1;
     display: grid;
-    grid-template-columns: minmax(215px, .8fr) minmax(310px, 1.5fr) minmax(230px, .85fr);
+    grid-template-columns: minmax(215px, .65fr) minmax(310px, 1.6fr);
     gap: 25px;
     align-items: center;
     padding: 30px 0 40px;
@@ -1634,7 +1634,7 @@ summary>span {
     }
 
     .battle-layout {
-        grid-template-columns: 205px minmax(270px, 1fr) 220px;
+        grid-template-columns: 205px minmax(270px, 1fr);
         gap: 15px;
     }
 }
@@ -2083,4 +2083,115 @@ textarea {
         flex-wrap: wrap;
         padding-block: 14px;
     }
+}
+
+/* Instructions stay next to the monster on small screens. */
+.battle-hint {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+    max-width: 36rem;
+    margin: 12px auto 0;
+    text-wrap: pretty;
+}
+
+@media (max-width: 900px) {
+    .target-profile { grid-column: 1 / -1; }
+    .battle-message { min-height: 0; max-height: 10rem; overflow-y: auto; }
+}
+
+@media (max-width: 620px) {
+    .battle-layout { gap: 20px; padding-top: 12px; }
+    .battle-monster-stage { height: clamp(260px, 43svh, 340px); }
+    #monster { width: min(245px, 70vw); height: 100%; max-height: 305px; }
+    .mic-meter-controls { flex-wrap: wrap; }
+    .mic-meter-controls button { min-height: 44px; }
+}
+
+@media (width < 448px) {
+    .lobby-heading h1 { font-size: clamp(24px, 7vw, 30px); line-height: 1.45; }
+    .lobby-heading h1 span { display: block; }
+}
+
+/* Readable surfaces and a quieter hierarchy, retaining the neon accents. */
+.mic-status:empty { display: none; }
+.mic-settings summary { padding-block: 10px; min-height: 44px; }
+.hud-panel { background: linear-gradient(145deg, #142036, #0d1426); }
+.battle-hint { color: #d2deee; font-size: 15px; }
+
+@media (max-width: 620px) {
+    :root { --muted: #b4c0d4; }
+    body { font-size: 16px; line-height: 1.75; }
+    body::before { opacity: .25; }
+    .world-grid { opacity: .12; }
+    .site-header { min-height: 72px; padding-block: 8px; gap: 8px; flex-wrap: nowrap; }
+    .brand img { width: 120px; height: 49px; }
+    .back-link { margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; font-size: 12px; }
+    .lobby-page .lobby-heading { padding: 24px 4px; }
+    .lobby-heading .eyebrow { font-size: 11px; letter-spacing: 1.6px; margin-bottom: 12px; }
+    .lobby-page .lobby-heading > p { font-size: 15px; line-height: 1.8; margin-top: 12px; }
+    .lobby-heading > p br { display: initial; }
+    .lobby-heading h1 span { text-shadow: none; }
+    .hud-panel { border-color: #3e4e6a; border-radius: 14px; box-shadow: 0 12px 32px #0002; }
+    .hud-panel::after { display: none; }
+    .panel-heading { padding: 13px 18px; }
+    .panel-heading h2 { font-size: 14px; letter-spacing: .3px; }
+    .panel-code, .panel-heading > span:first-child { display: none; }
+    .lobby-page .input-content { padding: 20px 18px 12px; }
+    .input-content > label { display: block; font-size: 18px; line-height: 1.6; margin-bottom: 12px; }
+    .lobby-page textarea { min-height: 140px; border-radius: 10px; padding: 14px; line-height: 1.8; }
+    textarea::placeholder { color: #a6b3c9; }
+    .input-meta { margin: 8px 0 18px; font-size: 12px; }
+    .input-meta > span:first-child { display: none; }
+    #character-count { margin-left: auto; }
+    .lobby-page #input-actions { flex-direction: column; gap: 12px; }
+    .lobby-page #input-actions > button { flex: auto; width: 100%; min-height: 54px; border-radius: 10px; font-size: 16px; }
+    #generate-btn { font-size: 18px; }
+    #generate-btn > span:first-child { margin-right: 0; }
+    .button-en { display: none; }
+    .primary { box-shadow: 0 4px 16px #7850d925; }
+    .mic-settings { margin-top: 20px; padding-top: 4px; }
+    .mic-settings summary { color: var(--muted); font-size: 14px; }
+    .mic-settings[open] summary { color: var(--ink); }
+    #mic-meter { padding-top: 12px; }
+    .mic-meter-controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .mic-meter-controls button { padding: 8px 4px; border-radius: 8px; font-size: 12px; }
+    .mic-status, #pipeline-stage, .error-message { font-size: 14px; line-height: 1.8; }
+
+    /* Sound lives in the header, so it never covers the form or battle. */
+    body #metsu-audio { position: relative; inset: auto; flex: 0 0 44px; margin-left: auto; }
+    body #metsu-audio .ma-toggle { width: 44px; height: 44px; border-radius: 12px; box-shadow: none; animation: none; }
+    body #metsu-audio.locked .ma-toggle { animation: none; }
+    body #metsu-audio .ma-hint, body #metsu-audio.locked .ma-hint { display: none; }
+    body #metsu-audio .ma-panel { position: absolute; top: 52px; right: 0; min-width: 220px; padding: 16px; gap: 16px; background: #101b2f; box-shadow: 0 12px 32px #0008; }
+    body #metsu-audio input[type=range] { min-height: 28px; }
+    .battle-page #metsu-audio { margin-left: 0; }
+
+    .battle-layout { padding-top: 20px; gap: 24px; }
+    /* Keep text/header stable during the inline full-page hit shake. */
+    body.battle-page { transform: none !important; }
+    .arena > .eyebrow { font-size: 12px; letter-spacing: 1.5px; margin-bottom: 6px; }
+    #status-text { font-size: 22px; min-height: 1.5em; margin-bottom: 16px; color: #edf2ff; text-shadow: none; }
+    #hp-bar { height: 14px; padding: 2px; outline: none; border-radius: 8px; box-shadow: none; }
+    #hp-fill { border-radius: 5px; background: linear-gradient(90deg, #64dedb, #8ab4ff); box-shadow: none; }
+    #hp-value { border: 0; font-size: 15px; color: #d6f6ff; padding: 6px 0; margin-top: 4px; }
+    .battle-monster-stage .ring-back { opacity: .3; }
+    .battle-monster-stage .ring-floor { opacity: .45; }
+    .battle-hint { margin-top: 12px; padding: 10px 14px; border-radius: 10px; border: 1px solid #344865; background: #111d30; }
+    .profile-content { padding: 16px; }
+    .profile-content .eyebrow { display: none; }
+    .battle-message { margin: 0; padding: 0; background: none; border: 0; font-size: 15px; line-height: 1.85; }
+    .profile-divider { display: none; }
+    .target-profile .panel-heading h2 { font-size: 14px; }
+
+    .result-card { width: calc(100% - 32px); padding: 24px 18px; margin: 24px auto; }
+    .victory-symbol { height: 100px; }
+    .victory-symbol > span { width: 72px; height: 72px; font-size: 32px; }
+    #reset-msg { font-size: 25px; text-shadow: none; overflow-wrap: anywhere; }
+    .result-description { font-size: 15px; line-height: 1.9; }
+    .result-detail-panel { padding: 16px; border-color: #344865; }
+    .result-stat-row { gap: 12px; padding-block: 12px; align-items: baseline; }
+    .result-stat-row strong { font-size: 16px; text-align: right; overflow-wrap: anywhere; }
+    .result-stat-row span { flex-shrink: 0; }
+    #replay-btn { margin-top: 24px; border-radius: 10px; font-size: 16px; }
 }

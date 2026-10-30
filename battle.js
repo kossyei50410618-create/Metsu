@@ -39,17 +39,29 @@ let sensorTiltPeaks = { positive: null, negative: null };
 let sensorAwaitingStillness = false;
 let sensorStillSince = null;
 let sensorPreviousGravity = null;
+let handGestureDetector = null;
+function selectedBattleMode() { return readBattleData()?.mode || 'bag'; }
 
 function setAttackAvailability(enabled) {
   const attackReadyEl = document.getElementById('attack-ready');
   if (!attackReadyEl) return;
-  attackReadyEl.innerText = enabled ? '攻撃可能' : '攻撃不可';
-  attackReadyEl.hidden = false;
+  attackReadyEl.innerText = '動かして攻撃可能';
+  attackReadyEl.hidden = !enabled;
 }
 
 // Normalized browser samples: accel/gravity in G, gyro in rad/s.
 function handleSensorSample(sample) {
   if (!sensorAttackActive) return;
+  if (selectedBattleMode() !== 'bag' && handGestureDetector) {
+    const ready = handGestureDetector.sample(sample);
+    sensorAttackEnabled = ready;
+    setAttackAvailability(ready);
+    const hint = getElement('attack-hint');
+    if (hint) hint.innerText = ready
+      ? (selectedBattleMode() === 'shake' ? 'スマホを軽く左右に振って攻撃。タップでもOK。' : 'スマホをしっかり持って、軽く前に動かして攻撃。タップでもOK。')
+      : 'スマホを少し静止してください。タップでも攻撃できます。';
+    return;
+  }
   const { accel, gyro, gravity } = sample;
   const now = Date.now();
   const hintEl = getElement('attack-hint');
@@ -202,6 +214,9 @@ function blendSensorSamples(baseline, sample, alpha) {
 
 // Sensorの攻撃検知を開始し、初期状態と接続を準備する関数。
 function startSensorAttackDetection() {
+  const mode = selectedBattleMode();
+  handGestureDetector = mode !== 'bag' && window.MetsuGestures
+    ? window.MetsuGestures.createDetector(mode, power => attackMonster(power)) : null;
   sensorAttackActive = true;
   sensorMotionState = 'ready';
   sensorAttackEnabled = false;
@@ -221,6 +236,7 @@ function startSensorAttackDetection() {
 
 // Sensorの攻撃検知を止め、状態変数とセンサー接続の状態をリセットする関数。
 function stopSensorAttackDetection() {
+  handGestureDetector?.reset();
   sensorAttackActive = false;
   sensorMotionState = 'ready';
   sensorAttackEnabled = false;
@@ -238,37 +254,9 @@ function stopSensorAttackDetection() {
 }
 
 // Permission, capture lifecycle, and sensor controls for this battle page.
-const motionStatusMessages = {
-  idle: 'スマホのセンサーを有効にしてください。',
-  requesting: 'センサーの許可を確認しています…',
-  waiting: 'センサーの値を待っています…',
-  streaming: 'スマホのセンサーで接続中',
-  insecure: 'センサーにはHTTPSが必要です。HTTPSのURLで開いてください。',
-  unsupported: 'このブラウザーはセンサーに対応していません。スマホのSafariやChromeで開いてください。',
-  denied: 'センサーが許可されていません。サイトの設定で許可してから再度お試しください。',
-  unavailable: '加速度・ジャイロの値を取得できません。設定を確認して再接続するか、タップで攻撃してください。',
-  paused: 'センサーを一時停止しました。再開するには有効化ボタンを押してください。',
-  stopped: 'センサーを停止しました。タップで攻撃できます。',
-};
-let lastSensorDisplayAt = 0;
 const motionReader = window.MetsuMotion.createReader({
-  onSample(sample) {
-    const now = Date.now();
-    if (now - lastSensorDisplayAt >= 150) {
-      lastSensorDisplayAt = now;
-      const readings = document.getElementById('sensor-readings');
-      const format = vector => ['x', 'y', 'z'].map(axis => vector[axis].toFixed(2)).join(', ');
-      if (readings) readings.textContent =
-        `加速度（重力込み）[G]: ${format(sample.accel)}\n重力${sample.estimatedGravity ? '（推定）' : ''} [G]: ${format(sample.gravity)}\nジャイロ [rad/s]: ${format(sample.gyro)}`;
-    }
-    handleSensorSample(sample);
-  },
+  onSample: handleSensorSample,
   onStatus(status) {
-    const statusEl = document.getElementById('motion-status');
-    if (statusEl) statusEl.textContent = motionStatusMessages[status];
-    document.getElementById('sensor-start-btn').disabled = ['requesting', 'waiting', 'streaming'].includes(status);
-    document.getElementById('sensor-stop-btn').disabled = !['requesting', 'waiting', 'streaming'].includes(status);
-    document.getElementById('sensor-calibrate-btn').disabled = status !== 'streaming';
     if (status === 'streaming') {
       if (sensorAttackActive && hp > 0) startSensorAttackDetection();
     } else {
@@ -276,8 +264,7 @@ const motionReader = window.MetsuMotion.createReader({
       sensorStillSince = null;
       setAttackAvailability(false);
       const hint = document.getElementById('attack-hint');
-      if (hint) hint.innerText = 'モンスターをタップしても攻撃できます。';
-      document.getElementById('sensor-readings').textContent = '加速度・重力・ジャイロ: --';
+      if (hint) hint.innerText = 'モンスターをタップして攻撃';
     }
   },
 });
@@ -285,20 +272,19 @@ const motionReader = window.MetsuMotion.createReader({
 function showSensorCalibrationHint() {
   const hint = document.getElementById('attack-hint');
   if (hint) hint.innerText = motionReader.running
-    ? 'スマホを1.5秒静止して調整してください。'
-    : 'センサーを有効にするか、モンスターをタップして攻撃できます。';
+    ? 'スマホを1.5秒静止すると、動かして攻撃できます。タップでも攻撃できます。'
+    : 'モンスターをタップして攻撃';
 }
 
 function stopPhoneSensors() { motionReader.stop(); }
-document.getElementById('sensor-start-btn').addEventListener('click', () => motionReader.start());
-document.getElementById('sensor-stop-btn').addEventListener('click', stopPhoneSensors);
-document.getElementById('sensor-calibrate-btn').addEventListener('click', () => {
-  if (sensorAttackActive && hp > 0) startSensorAttackDetection();
-});
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) motionReader.stop('paused');
+  else if (sensorAttackActive && hp > 0) motionReader.start();
 });
 window.addEventListener('pagehide', stopPhoneSensors);
+window.addEventListener('pageshow', () => {
+  if (sensorAttackActive && hp > 0) motionReader.start();
+});
 
 // 現在のHP値をバーと表示テキストへ反映し、モンスター画像の見た目も更新する関数。
 function syncHpUi() {
@@ -611,6 +597,7 @@ function finalizeBattleResult() {
 
   try {
     sessionStorage.setItem(RESULT_DATA_KEY, JSON.stringify(resultData));
+    window.MetsuAccount?.recordBattle(resultData, storedData);
   } catch (err) {
     console.warn('討伐結果の保存に失敗しました:', err);
   }
