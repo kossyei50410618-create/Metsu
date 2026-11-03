@@ -9,7 +9,7 @@
 .flow-card h3 { font-size: 18px; margin: 0 0 18px; }
 .flow-card .button { width: 100%; border-radius: 10px; }
 .welcome-card { text-align: center; max-width: 540px; margin-inline: auto; }
-.welcome-emblem { display: grid; place-items: center; margin: 0 auto 22px; width: 76px; height: 76px; color: #e2d6ff; background: radial-gradient(circle at 25% 20%, #7049bd, #281b53); border: 1px solid #a487e0; border-radius: 24px; font-size: 36px; box-shadow: 0 0 40px #8d5ef51a; }
+.welcome-emblem { display: block; margin: 0 auto 22px; width: 90px; height: 90px; }
 .quiet, .flow-status { color: #b4c0d4; font-size: 14px; line-height: 1.8; }
 .flow-status:empty { display: none; }
 #account-status { text-align: center; }
