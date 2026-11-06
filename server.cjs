@@ -61,7 +61,10 @@ function createApp({ database = path.join(__dirname, 'data', 'metsu.sqlite'), se
     }
     next();
   });
-  app.use(express.json({ limit: '16kb' }));
+  // Only recorded audio needs a larger body; account/history/text limits stay small.
+  const smallJson = express.json({ limit: '16kb' });
+  const audioJson = express.json({ limit: '2mb' });
+  app.use((req, res, next) => (req.path === '/api/transcribe' ? audioJson : smallJson)(req, res, next));
   function session(req) {
     const token = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('metsu_session='))?.slice(14);
     if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;

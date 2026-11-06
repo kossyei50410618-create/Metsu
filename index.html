@@ -84,6 +84,11 @@
                     <div id="input-actions"><button id="generate-btn" class="button primary" type="button"><span>討伐開始</span><span class="button-en">BATTLE START</span><span aria-hidden="true">⟶</span></button><button id="voice-btn" class="button secondary" type="button">🎤 声で召喚する <span class="button-en">VOICE INPUT</span></button></div>
                     <p id="pipeline-stage" role="status" aria-live="polite"></p>
                     <p id="mic-status" class="mic-status" role="status" aria-live="polite"></p>
+                    <div id="voice-recording-controls" hidden>
+                        <p class="quiet">最大20秒の音声を文字起こしのためAIに送信します。話し終わったら「話し終わった」を押してください。</p>
+                        <button id="voice-finish-btn" class="button secondary" type="button">話し終わった</button>
+                        <button id="voice-cancel-btn" class="text-button" type="button">キャンセル</button>
+                    </div>
                     <details class="mic-settings">
                         <summary>マイクの確認・調整</summary>
                         <div id="mic-meter">

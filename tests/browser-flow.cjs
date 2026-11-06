@@ -133,6 +133,63 @@ const { createApp } = require('../server.cjs');
     }
     await shot('voice-ai-result');
     assert.equal(guestWrites, 0);
+    await page.locator('#replay-btn').click();
+    await page.locator('#choose-mode').click();
+    await page.locator('#voice-btn').waitFor();
+    const recordings = [];
+    await page.route('**/api/transcribe', route => {
+      recordings.push(route.request().postDataJSON());
+      return route.fulfill({ json: { text: '仕事がつらい' } });
+    });
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'userAgent', { value: 'Android Chrome', configurable: true });
+      window.captureCount = 0;
+      window.SpeechRecognition = class { constructor() { throw Error('Mobile must not start a second mic'); } };
+      navigator.mediaDevices.getUserMedia = async () => {
+        window.captureCount++;
+        const audio = new AudioContext(); await audio.resume();
+        const oscillator = audio.createOscillator(); oscillator.frequency.value = 200;
+        const gain = audio.createGain(); gain.gain.value = 0.15;
+        const destination = audio.createMediaStreamDestination();
+        oscillator.connect(gain).connect(destination); oscillator.start();
+        const track = destination.stream.getAudioTracks()[0];
+        const stop = track.stop.bind(track);
+        track.stop = () => { stop(); oscillator.stop(); void audio.close(); };
+        return destination.stream;
+      };
+    });
+    // First cancel, then record again: listeners and tracks must not leak.
+    await page.locator('#voice-btn').click();
+    await page.locator('#voice-finish-btn').waitFor({ state: 'visible' });
+    await page.locator('#voice-cancel-btn').click();
+    await page.waitForFunction(() => !document.getElementById('voice-btn').disabled);
+    assert.equal(recordings.length, 0);
+    // Simulate Android revoking a live track (call/app interruption).
+    await page.locator('#voice-btn').click();
+    await page.waitForFunction(() => !document.getElementById('voice-finish-btn').disabled);
+    await page.evaluate(() => window.getMicStream().getAudioTracks()[0].dispatchEvent(new Event('ended')));
+    await page.waitForFunction(() => !document.getElementById('voice-btn').disabled);
+    assert.match(await page.locator('#mic-status').innerText(), /マイクが切断/);
+    assert.equal(recordings.length, 0);
+    await page.locator('#voice-btn').click();
+    await page.waitForFunction(() => !document.getElementById('voice-finish-btn').disabled);
+    await page.waitForFunction(() => window.getMicSessionStats().toneSampleCount >= 5);
+    await page.locator('#voice-finish-btn').click();
+    await page.getByRole('button', { name: 'この内容で決定' }).click();
+    assert.equal(await page.evaluate(() => window.captureCount), 3);
+    await page.waitForURL('**/battle.html');
+    assert.equal(recordings.length, 1);
+    assert.ok(recordings[0].audio.length > 100);
+    assert.equal(recordings[0].mimeType, 'audio/webm');
+    await page.locator('#monster').waitFor();
+    for (let i = 0; i < 50; i++) {
+      if (await page.locator('#monster').isDisabled()) break;
+      await page.locator('#monster').click();
+    }
+    await page.waitForURL('**/result.html', { timeout: 15000 });
+    assert.equal(await page.locator('#result-text-analysis').innerText(), '仕事に対する怒り。');
+    assert.equal(await page.locator('#audio-analysis-panel').isVisible(), true);
+    await shot('android-recorded-ai-result');
     await page.locator('#replay-btn').click(); await page.locator('#leave-btn').click();
     for (const width of [320, 375, 390, 447, 448, 620, 768, 1280]) {
       await page.setViewportSize({ width, height: 844 }); await noOverflow(`welcome ${width}`);

@@ -173,6 +173,140 @@ function isSpeechRecognitionSupported() {
   return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
 
+function useRecordedVoice() {
+  const mobile = navigator.userAgentData?.mobile ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '') ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return !!(window.MediaRecorder && navigator.mediaDevices?.getUserMedia &&
+    (mobile || !isSpeechRecognitionSupported()));
+}
+
+// One getUserMedia stream feeds both Web Audio and MediaRecorder. Mobile speech
+// services can interrupt a separate microphone capture even in the same browser.
+async function listenRecorded() {
+  const controls = getElement('voice-recording-controls');
+  const finishButton = getElement('voice-finish-btn');
+  const cancelButton = getElement('voice-cancel-btn');
+  const status = getElement('mic-status');
+  let recorder;
+  let cancelled = false;
+  let timeout;
+  let silenceCheck;
+  let rejectRecording;
+  let transcriptionController;
+  const finish = () => {
+    if (recorder?.state === 'recording') recorder.stop();
+  };
+  const cancel = () => {
+    cancelled = true;
+    transcriptionController?.abort();
+    finish();
+    stopMicMeter();
+  };
+  const interrupted = () => {
+    rejectRecording?.(new Error('マイクが切断されました。画面を開いたまま、もう一度お試しください。'));
+    finish();
+  };
+  const visibilityChanged = () => { if (document.hidden) cancel(); };
+  let track;
+  controls.hidden = false;
+  finishButton.disabled = true;
+  cancelButton.disabled = false;
+  finishButton.addEventListener('click', finish);
+  cancelButton.addEventListener('click', cancel);
+  document.addEventListener('visibilitychange', visibilityChanged);
+  try {
+    status.innerText = 'マイクを準備しています。使用を許可してください。';
+    const ready = await window.initMicMeter();
+    if (cancelled) return null;
+    if (!ready) throw new Error('マイクを開始できませんでした。Chromeのマイク権限を確認し、通話や録音を終了してから再試行してください。');
+    const stream = window.getMicStream();
+    track = stream.getAudioTracks()[0];
+    track.addEventListener('ended', interrupted);
+    const mimeType = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm']
+      .find(type => window.MediaRecorder.isTypeSupported(type));
+    if (!mimeType) throw new Error('このブラウザーでは音声を録音できません。文字で入力してください。');
+    recorder = new window.MediaRecorder(stream, { mimeType, audioBitsPerSecond: 64000 });
+    window.startMicVolumeCollection();
+    const blob = await new Promise((resolve, reject) => {
+      rejectRecording = reject;
+      const chunks = [];
+      let bytes = 0;
+      recorder.ondataavailable = event => {
+        if (!event.data.size) return;
+        bytes += event.data.size;
+        if (bytes > 1000000) {
+          reject(new Error('録音データが大きすぎます。短く話してもう一度お試しください。'));
+          finish();
+        } else chunks.push(event.data);
+      };
+      recorder.onerror = () => {
+        reject(new Error('録音中にエラーが発生しました。もう一度お試しください。'));
+        finish();
+      };
+      recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType || mimeType }));
+      recorder.start(250);
+      finishButton.disabled = false;
+      status.innerText = '録音中… 話し終わったら「話し終わった」を押してください。';
+      timeout = setTimeout(finish, CONFIG.HARD_TIMEOUT_MS);
+      let lastVoiceAt = Date.now();
+      let heardVoice = false;
+      silenceCheck = setInterval(() => {
+        if (window.getMicData().volume >= CONFIG.MIN_SPEECH_VOLUME) {
+          heardVoice = true;
+          lastVoiceAt = Date.now();
+        }
+        if (heardVoice && Date.now() - lastVoiceAt >= CONFIG.SILENCE_END_MS) finish();
+      }, 100);
+    });
+    clearTimeout(timeout);
+    clearInterval(silenceCheck);
+    window.stopMicVolumeCollection();
+    stopMicMeter();
+    if (cancelled) return null;
+    if (!blob.size) throw new Error('音声が録音されませんでした。もう一度お試しください。');
+    controls.hidden = true;
+    status.innerText = '録音完了。AIで文字起こししています…';
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 32768) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+    }
+    transcriptionController = new AbortController();
+    const transcribeTimeout = setTimeout(() => transcriptionController.abort(), GEMINI_ANALYSIS_TIMEOUT_MS);
+    try {
+      const response = await fetch('/api/transcribe', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Metsu-Request': '1' },
+        body: JSON.stringify({ audio: btoa(binary), mimeType: blob.type.split(';')[0] }),
+        signal: transcriptionController.signal,
+      });
+      if (!response.ok) throw new Error('AIの文字起こしを利用できませんでした。通信を確認して再試行するか、文字で入力してください。');
+      const data = await response.json();
+      if (cancelled) return null;
+      const text = typeof data.text === 'string' ? data.text.trim() : '';
+      return { segments: text && text !== 'NO_SPEECH' ? [[{ text, confidence: 0 }]] : [] };
+    } catch (error) {
+      if (cancelled) return null;
+      if (error.name === 'AbortError') throw new Error('AIの文字起こしが時間内に完了しませんでした。もう一度お試しください。');
+      throw error;
+    } finally { clearTimeout(transcribeTimeout); }
+  } finally {
+    clearTimeout(timeout);
+    clearInterval(silenceCheck);
+    rejectRecording = null;
+    track?.removeEventListener('ended', interrupted);
+    document.removeEventListener?.('visibilitychange', visibilityChanged);
+    finishButton.removeEventListener?.('click', finish);
+    cancelButton.removeEventListener?.('click', cancel);
+    finish();
+    window.stopMicVolumeCollection();
+    stopMicMeter();
+    controls.hidden = true;
+    finishButton.disabled = true;
+    cancelButton.disabled = true;
+  }
+}
+
 // ==============================
 // 端末内認識＋単語ブースト（対応ブラウザのみ）
 // 使えない場合は false を返し、通常のクラウド認識にフォールバックする
@@ -490,7 +624,8 @@ async function startRecognition() {
   const inputText = document.getElementById('input-text');
 
   if (!status || !inputText) return;
-  if (!isSpeechRecognitionSupported()) {
+  const recordedVoice = useRecordedVoice();
+  if (!recordedVoice && !isSpeechRecognitionSupported()) {
     status.innerText = 'お使いのブラウザは音声認識に対応していません。Chrome または Edge をお試しください。';
     updatePipelineStage('音声認識非対応');
     return;
@@ -508,9 +643,14 @@ async function startRecognition() {
   status.innerText = '録音中... 話してください。';
 
   try {
-    const recognized = await listen(false, (heard) => {
+    const recognized = recordedVoice ? await listenRecorded() : await listen(false, (heard) => {
       status.innerText = `録音中... 「${heard}」`;
     });
+    if (recognized === null) {
+      status.innerText = '録音をキャンセルしました。';
+      updatePipelineStage('音声入力がキャンセルされました。');
+      return;
+    }
     window.stopMicVolumeCollection();
 
     const audioStats = window.getMicSessionStats();

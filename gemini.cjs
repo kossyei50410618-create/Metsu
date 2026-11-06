@@ -1,13 +1,21 @@
 // Only imported by the server. Never serve this file to browsers.
 function installGemini(app, { apiKey = '', audioKey = '', model = 'gemini-3.1-flash-lite', fetchImpl = fetch, prompts } = {}) {
   let active = 0, count = 0, windowEnd = 0;
-  app.post('/api/analyze', async (req, res) => {
+  app.post(['/api/analyze', '/api/transcribe'], async (req, res) => {
+    const transcribe = req.path === '/api/transcribe';
     const { kind, input } = req.body || {};
-    if (!['speech', 'audio'].includes(kind) || typeof input !== 'string' || !input.trim() || input.length > 4000 ||
-        Object.keys(req.body).some(k => !['kind', 'input'].includes(k))) {
+    const { audio, mimeType } = req.body || {};
+    const valid = transcribe
+      ? typeof audio === 'string' && audio.length > 0 && audio.length <= 1400000 &&
+        audio.length % 4 === 0 && /^[A-Za-z0-9+/]+={0,2}$/.test(audio) &&
+        ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'].includes(mimeType) &&
+        Object.keys(req.body).every(k => ['audio', 'mimeType'].includes(k))
+      : ['speech', 'audio'].includes(kind) && typeof input === 'string' && input.trim() && input.length <= 4000 &&
+        Object.keys(req.body).every(k => ['kind', 'input'].includes(k));
+    if (!valid) {
       return res.status(400).json({ error: '解析する内容を確認してください。' });
     }
-    const key = kind === 'audio' ? audioKey || apiKey : apiKey;
+    const key = transcribe || kind === 'audio' ? audioKey || apiKey : apiKey;
     if (!key) return res.status(503).json({ error: 'AI解析が設定されていません。' });
     // Global limits also cover guests and tunnels, without trusting forwarded IPs.
     const now = Date.now();
@@ -20,9 +28,11 @@ function installGemini(app, { apiKey = '', audioKey = '', model = 'gemini-3.1-fl
       const upstream = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST', signal: controller.signal,
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({ systemInstruction: { parts: [{ text: prompts[kind] }] },
-          contents: [{ role: 'user', parts: [{ text: input }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 400 } }),
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: transcribe ? prompts.transcribe : prompts[kind] }] },
+          contents: [{ role: 'user', parts: transcribe
+            ? [{ inlineData: { mimeType, data: audio } }]
+            : [{ text: input }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: transcribe ? 1000 : 400 } }),
       });
       if (!upstream.ok) {
         console.warn('Gemini request failed, HTTP status:', upstream.status);

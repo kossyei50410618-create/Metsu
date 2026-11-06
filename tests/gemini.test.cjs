@@ -48,3 +48,39 @@ test('Gemini remains optional when the server has no key', async t => {
     headers: { 'Content-Type': 'application/json', 'X-Metsu-Request': '1' }, body: JSON.stringify({ kind: 'speech', input: 'hello' }) });
   assert.equal(res.status, 503);
 });
+
+test('recorded voice uses validated inline audio, shared rate limits and private audio credentials', async t => {
+  const calls = [];
+  const { app, db } = createApp({ database: ':memory:', gemini: {
+    apiKey: 'text-secret', audioKey: 'audio-secret',
+    fetchImpl: async (_url, options) => {
+      calls.push(options);
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: '仕事がつらい' }] } }] }) };
+    },
+  } });
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(async () => { await new Promise(resolve => server.close(resolve)); db.close(); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const request = (body, headers = {}) => fetch(base + '/api/transcribe', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Metsu-Request': '1', ...headers }, body: JSON.stringify(body) });
+  const body = { audio: Buffer.alloc(20000).toString('base64'), mimeType: 'audio/webm' };
+  assert.equal((await request(body, { Origin: 'https://evil.example' })).status, 403);
+  for (const invalid of [{ ...body, mimeType: 'text/html' }, { ...body, audio: 'invalid!' },
+    { ...body, audio: 'AAAA'.repeat(350001) }, { ...body, model: 'override' }, {}]) {
+    assert.equal((await request(invalid)).status, 400);
+  }
+  assert.equal(calls.length, 0);
+  const response = await request(body);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { text: '仕事がつらい' });
+  assert.equal(calls[0].headers['x-goog-api-key'], 'audio-secret');
+  const payload = JSON.parse(calls[0].body);
+  assert.deepEqual(payload.contents[0].parts, [{ inlineData: { mimeType: 'audio/webm', data: body.audio } }]);
+  assert.match(payload.systemInstruction.parts[0].text, /NO_SPEECH/);
+  for (let i = 0; i < 19; i++) assert.equal((await request(body)).status, 200);
+  const limited = await fetch(base + '/api/analyze', { method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Metsu-Request': '1' },
+    body: JSON.stringify({ kind: 'speech', input: '仕事' }) });
+  assert.equal(limited.status, 429);
+});
