@@ -162,6 +162,22 @@ test('rate-limit errors do not retry repeatedly', async () => {
   assert.equal(a.run('attemptCount'), 1);
 });
 
+test('text analysis uses the same-origin proxy without browser credentials', async () => {
+  const a = app('index.html');
+  a.run(`
+    sentRequest = null;
+    fetch = async (url, options) => {
+      sentRequest = { url, options };
+      return { ok: true, json: async () => ({ text: '仕事に対する怒り。' }) };
+    };
+  `);
+  assert.equal(await a.run('analyzeSpeechText("仕事がつらい")'), '仕事に対する怒り。');
+  const sent = a.run('sentRequest');
+  assert.equal(sent.url, '/api/analyze');
+  assert.equal(sent.options.headers['X-Metsu-Request'], '1');
+  assert.deepEqual(JSON.parse(sent.options.body), { kind: 'speech', input: '仕事がつらい' });
+});
+
 test('slang and colloquial variants participate in category rules', () => {
   const a = app('index.html');
   const result = a.run('classifyCategory("空気読めないやつがウザくてしんどい")');

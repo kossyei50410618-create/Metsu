@@ -1,8 +1,8 @@
-api.js
-
 __pycache__/
 backups/
 dist-mobile/
 node_modules/
 data/
 .env
+.env.*
+!.env.example

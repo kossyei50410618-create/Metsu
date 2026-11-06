@@ -1,17 +1,4 @@
-// 役割を分けるため、共通補助キーではなく専用キーを保持する
-import { SECRETS } from './api.js';
-
-const CONFIG = {   //api.keyから値読み取る
-  SPEECH_API_KEY: SECRETS.SPEECH_API_KEY,
-  AUDIO_API_KEY: SECRETS.AUDIO_API_KEY,
-
-  // 文字起こし後のテキスト解析に使うモデル
-  SPEECH_ANALYSIS_MODEL: "gemini-3.1-flash-lite",
-
-  // 音響特徴量（音の大きさ・周波数・抑揚）に使うモデル
-  AUDIO_ANALYSIS_MODEL: "gemini-3.5-flash-lite",
-  JUDGE_MODEL: "gemini-3.5-flash-lite",
-
+const CONFIG = {
   // 各種しきい値
   STATE_CONFIDENCE_THRESHOLD: 0.7,
   PATTERN_CONFIDENCE_THRESHOLD: 0.7,
@@ -135,102 +122,27 @@ function resetToInputScreen(event) {
 
 const GEMINI_ANALYSIS_TIMEOUT_MS = 8000;
 
-async function generateResponse(prompt, userMessage, options = {}) {
-  const {
-    model = CONFIG.SPEECH_ANALYSIS_MODEL,
-    temperature = 0.7,
-    maxOutputTokens = 800,
-    deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS,
-    apiKey = CONFIG.SPEECH_API_KEY,   // 【修正】未定義の GEMINI_API_KEY をやめる
-  } = options;
-
-  if (!apiKey) throw new Error('AI analysis is not configured; using text classification.');
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  const requestBody = {
-    systemInstruction: { parts: [{ text: prompt }] },
-    contents: [{ role: "user", parts: [{ text: userMessage }] }],
-    generationConfig: { temperature, maxOutputTokens },
-  };
-
-  // 429/503 が出ても連続リトライを避け、即時に失敗させる。
-  const MAX_RETRIES = 0;
-  const RETRY_DELAYS = [];
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const remainingMs = deadlineAt - Date.now();
-    if (remainingMs <= 0) throw new Error('Gemini analysis timed out after 8 seconds');
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), remainingMs);
-    let response;
-    let data;
-    let errorText = '';
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      });
-      if (response.ok) data = await response.json();
-      else errorText = await response.text();
-      if (Date.now() >= deadlineAt) throw new Error('Gemini analysis timed out after 8 seconds');
-    } catch (error) {
-      if (controller.signal.aborted || Date.now() >= deadlineAt) {
-        throw new Error('Gemini analysis timed out after 8 seconds');
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    if (response.ok) {
-      const candidate = data.candidates?.[0];
-      const text = candidate?.content?.parts
-        ?.map((part) => part.text || '')
-        .join('')
-        .trim();
-      if (!text) throw new Error('Gemini APIが空の解析結果を返しました。');
-      if (candidate.finishReason === 'MAX_TOKENS') {
-        throw new Error('Gemini APIの解析結果が途中で終了しました。');
-      }
-      return text;
-    }
-
-    const isRetryable = response.status === 503 || response.status === 429;
-
-    if (isRetryable && attempt < MAX_RETRIES) {
-      const delay = RETRY_DELAYS[attempt];
-      console.warn(`[llm] ${response.status} エラー。${delay / 1000}秒後にリトライ...`);
-      await sleep(delay);
-      continue;
-    }
-    throw new Error(`LLM API エラー: ${errorText}`);
-  }
+async function generateResponse(_prompt, input, options = {}) {
+  const remainingMs = (options.deadlineAt || Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) - Date.now();
+  if (remainingMs <= 0) throw new Error('AI analysis timed out');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), remainingMs);
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Metsu-Request': '1' },
+      body: JSON.stringify({ kind: options.kind || 'speech', input }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('AI analysis unavailable (HTTP ' + response.status + ')');
+    const data = await response.json();
+    if (typeof data.text !== 'string' || !data.text.trim()) throw new Error('AI analysis was empty');
+    return data.text.trim();
+  } finally { clearTimeout(timer); }
 }
 
 async function analyzeSpeechText(transcript, deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) {
-  const apiKey = CONFIG.SPEECH_API_KEY;
-  if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な SPEECH_API_KEY を設定してください。");
-
-  const prompt = `あなたはユーザーのストレスや怒りの音声入力を解析し、分類エンジンに渡すための要約を生成する専門AIです。
-以下の発話を読み取り、悩み・怒りのテーマと感情を抽出してください。
-【重要】
-後の分類精度を上げるため、発話内容が以下の「対象カテゴリ」のどれに最も近いかを推測し、そのカテゴリに関連する具体的なキーワード（仕事、上司、お金、時間、健康、勉強、スマホなど）を意図的に含めて要約してください。
-対象カテゴリ：対人関係、家族・生活環境、仕事・キャリア、お金・経済、健康・心身、生き方・自己実現、時間、デジタル、勉強、確率・不確実性、習慣・行動、趣味・余暇
-  出力形式：「〜に対する怒り。」のような形で、完結した1文の簡潔な日本語のみを返すこと。
-文の途中で止めたり、最後の語を省略したりせず、必ず「。」または「！」で終えること。`;
-  const userMessage = `以下の発話を解析してください：\n${transcript}`;
-
-  // 【修正】到達しないコードを直し、analysis を正しく受け取る
-  const analysis = await generateResponse(prompt, userMessage, {
-    model: CONFIG.SPEECH_ANALYSIS_MODEL,
-    apiKey,
-    temperature: 0.0,
-    maxOutputTokens: 400,
-    deadlineAt,
-  });
+  const analysis = await generateResponse(null, transcript, { kind: 'speech', deadlineAt });
   return /[。！？!?」』]$/.test(analysis) ? analysis : transcript;
 }
 
@@ -242,26 +154,7 @@ function shouldAnalyzeAudioFeatures(audioStats) {
 
 async function analyzeAudioFeatures(audioStats, deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) {
   if (!shouldAnalyzeAudioFeatures(audioStats)) return '';
-
-  const apiKey = CONFIG.AUDIO_API_KEY;
-  if (!apiKey || apiKey === "YOUR_API_KEY_HERE") throw new Error("config.js に有効な AUDIO_API_KEY を設定してください。");
-
-  const prompt = `あなたは音の大きさ・周波数・抑揚から話者の状態を分析するAIです。
-以下の音声特徴量から想定される内容を、日本語で短く説明してください。
-出力は必ず次の2項目だけを箇条書きにしてください。
-・声のトーン: 数値から想定される声のトーン
-・感情: 数値から想定される感情
-太字などのMarkdown記法は使わず、** を含めないでください。`;
-
-  const userMessage = `以下の音声特徴量を解析してください:\n${JSON.stringify(audioStats, null, 2)}`;
-
-  const analysis = await generateResponse(prompt, userMessage, {
-    model: CONFIG.AUDIO_ANALYSIS_MODEL || CONFIG.SPEECH_ANALYSIS_MODEL,
-    apiKey,
-    temperature: 0.0,
-    maxOutputTokens: 120,
-    deadlineAt,
-  });
+  const analysis = await generateResponse(null, JSON.stringify(audioStats), { kind: 'audio', deadlineAt });
   return analysis.replace(/\*\*/g, '');
 }
 

@@ -16,7 +16,30 @@ $env:PORT = "5503"
 npm start
 ```
 
-Node.js 20+ diperlukan (pengujian lokal: 20.11.1). `better-sqlite3` adalah modul native; jalankan `npm install` di OS server tujuan. Database dibuat otomatis di `data/metsu.sqlite` dan bertahan setelah restart. Folder `data/` tidak masuk Git. Hosting harus menyediakan disk persisten; implementasi ini untuk satu instance aplikasi.
+Gunakan Node.js 22.x dengan patch terbaru untuk instalasi baru. `better-sqlite3` adalah modul native; jalankan `npm install` di OS server tujuan. Database dibuat otomatis di `data/metsu.sqlite` dan bertahan setelah restart. Folder `data/` tidak masuk Git. Hosting harus menyediakan disk persisten; implementasi ini untuk satu instance aplikasi.
+
+## Konfigurasi Gemini (opsional)
+
+Frontend mengirim teks ke `POST /api/analyze`; hanya backend yang menghubungi Gemini. Key, prompt, dan pilihan model tidak dikirim ke browser. Untuk komputer baru:
+
+1. Jalankan `npm install`.
+2. Salin `.env.example` menjadi `.env` jika `.env` belum ada.
+3. Isi `GEMINI_API_KEY` di `.env` melalui editor lokal. Jangan kirim key melalui chat atau commit ke GitHub.
+4. Jalankan `npm start`. Setelah mengubah `.env`, hentikan server dengan Ctrl+C lalu jalankan kembali.
+
+```dotenv
+GEMINI_API_KEY=isi_key_anda
+GEMINI_AUDIO_API_KEY=
+GEMINI_MODEL=gemini-3.1-flash-lite
+```
+
+`GEMINI_AUDIO_API_KEY` opsional dan memakai key utama jika kosong. Model dapat diganti dengan model yang tersedia untuk akun Anda. Environment variable sistem mengalahkan nilai `.env`. `.env` dibaca otomatis oleh `dotenv` dari folder proyek dan tidak disajikan oleh server. `.env.example` hanya berisi contoh kosong dan boleh masuk Git.
+
+File `api.js` lokal tidak lagi dibaca oleh frontend maupun backend. Tanpa key atau ketika Gemini gagal, game tetap memakai teks asli dan klasifikasi lokal. Dengan key, teks keluhan/transkrip dikirim ke Google untuk diringkas; teks tersebut tidak ditambahkan ke database riwayat.
+
+Proxy membatasi input 4.000 karakter, 20 permintaan per menit untuk seluruh server, 2 permintaan bersamaan, dan waktu tunggu 8 detik. Tidak ada retry otomatis. Batas ini juga berlaku untuk tamu dan bukan batas biaya bulanan; endpoint masih dapat diakses pengguna URL tunnel. Pesan kesalahan dari Google tidak diteruskan mentah ke browser.
+
+Perubahan ini mengaktifkan jalur analisis teks lewat backend. Pengumpulan fitur suara saat dikte masih dinonaktifkan untuk menghindari konflik mikrofon; panel `音声解析` pada result tetap tersembunyi jika tidak ada data analisis suara. Mengisi key saja tidak memulihkan pengumpulan fitur suara.
 
 ## Akses HP melalui HTTPS
 
@@ -55,7 +78,7 @@ Gunakan `npm start` untuk semua mode. Tidak ada langkah build demo statis. Serve
 
 Satu play dapat berisi beberapa monster. Waktu battle adalah jumlah durasi melawan monster yang selesai, bukan waktu di menu. Battle yang ditinggalkan sebelum monster kalah belum dicatat. Grafik memakai penilaian pengguna satu kali per play, dirata-ratakan per tanggal pada zona waktu browser; bukan inferensi stres dari kekuatan pukulan atau diagnosis kesehatan. Grafik menampilkan maksimal 1.000 play terbaru dengan filter 30/90 hari/semua data itu. Statistik total mencakup semua riwayat; daftar monster dipaginasi 100 baris.
 
-SQLite menyimpan akun (hash scrypt + salt), sesi (hash token), waktu, kategori/jenis/bentuk monster, mode, penilaian stres, durasi, serangan, dan damage. **Isi keluhan dan transkrip suara tidak disimpan di database.** Server mengirim konfigurasi API AI kosong; klasifikasi memakai logika lokal yang sudah ada.
+SQLite menyimpan akun (hash scrypt + salt), sesi (hash token), waktu, kategori/jenis/bentuk monster, mode, penilaian stres, durasi, serangan, dan damage. **Isi keluhan dan transkrip suara tidak disimpan di database.** Klasifikasi kategori memakai logika lokal, dengan ringkasan Gemini bila konfigurasi dan permintaan berhasil.
 
 Tamu membawa state sementara di `sessionStorage` untuk perpindahan halaman. Input dan hasil dibuang sesudah hasil ditampilkan atau saat kembali ke dashboard. Tidak ada arsip gameplay atau kamus koreksi ucapan untuk tamu. Pengaturan audio yang sudah ada terpisah dari riwayat gameplay; fitur ini tidak menghapus riwayat URL milik browser.
 

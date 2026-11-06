@@ -5,13 +5,14 @@
   "scripts": {
     "start": "node server.cjs",
     "test:browser": "node tests/browser-flow.cjs",
-    "test": "node --test tests/motion.test.cjs tests/ui-flow.test.cjs tests/server.test.cjs tests/gestures.test.cjs"
+    "test": "node --test tests/motion.test.cjs tests/ui-flow.test.cjs tests/server.test.cjs tests/gestures.test.cjs tests/gemini.test.cjs"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
+    "dotenv": "^18.0.9",
     "express": "^5.1.0"
   },
   "devDependencies": {

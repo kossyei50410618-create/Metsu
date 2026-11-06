@@ -4,6 +4,8 @@ const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 const fs = require('node:fs');
 const path = require('node:path');
+const { installGemini } = require('./gemini.cjs');
+const geminiPrompts = require('./gemini-prompts.json');
 const scrypt = promisify(crypto.scrypt);
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const MODES = ['punch', 'shake', 'bag'];
@@ -12,7 +14,7 @@ const PUBLIC_FILES = new Set(['index.html', 'battle.html', 'result.html', 'style
   'audio.js', 'mic.js', 'category.js', 'monster.js', 'motion.js', 'gestures.js',
   'battle.js', 'script.js', 'ui.js', 'result.js', 'account.js', 'lobby.js']);
 
-function createApp({ database = path.join(__dirname, 'data', 'metsu.sqlite'), secureCookies = false, publicOrigin = '' } = {}) {
+function createApp({ database = path.join(__dirname, 'data', 'metsu.sqlite'), secureCookies = false, publicOrigin = '', gemini = {} } = {}) {
   if (database !== ':memory:') fs.mkdirSync(path.dirname(database), { recursive: true });
   const db = new Database(database);
   db.pragma('foreign_keys = ON');
@@ -157,6 +159,7 @@ function createApp({ database = path.join(__dirname, 'data', 'metsu.sqlite'), se
   app.delete('/api/history', (req, res) => {
     db.prepare('DELETE FROM battles WHERE user_id = ?').run(req.user.id); res.json({ ok: true });
   });
+  installGemini(app, { ...gemini, prompts: geminiPrompts });
   app.use('/api', (_req, res) => res.status(404).json({ error: 'APIが見つかりません。' }));
   // Explicit public allowlist: database, sources, private api.js and tests are never served.
   app.get('/api.js', (_req, res) => res.type('js').send('export const SECRETS = { SPEECH_API_KEY: "", AUDIO_API_KEY: "" };'));
@@ -175,8 +178,11 @@ function createApp({ database = path.join(__dirname, 'data', 'metsu.sqlite'), se
 }
 
 if (require.main === module) {
+  require('dotenv').config({ path: path.join(__dirname, '.env'), quiet: true });
   const { app, db } = createApp({ database: process.env.METSU_DB || path.join(__dirname, 'data', 'metsu.sqlite'),
-    secureCookies: process.env.SECURE_COOKIES === 'true', publicOrigin: process.env.PUBLIC_ORIGIN || '' });
+    secureCookies: process.env.SECURE_COOKIES === 'true', publicOrigin: process.env.PUBLIC_ORIGIN || '',
+    gemini: { apiKey: process.env.GEMINI_API_KEY, audioKey: process.env.GEMINI_AUDIO_API_KEY,
+      model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite' } });
   const port = Number(process.env.PORT || 5501);
   const server = app.listen(port, process.env.HOST || '127.0.0.1');
   server.on('listening', () => console.log(`Metsu: http://127.0.0.1:${port}`));
