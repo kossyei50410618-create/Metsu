@@ -1,123 +1,96 @@
-﻿# Metsu
+# Metsu
 
-Metsu は、日々のモヤモヤやストレスを「モンスター」に見立てて、言葉にして倒すことを目的としたブラウザゲームです。自分の悩みを入力したり、声で話したりして、モンスターを召喚し、戦闘を通じて気持ちを切り替える体験を提供します。
+## Menjalankan versi lengkap
 
-## アカウント・履歴対応版の起動
+Frontend dan backend JavaScript berjalan dari satu server Express dengan SQLite. Tidak memerlukan Python atau ZIG SIM.
 
-```sh
+```powershell
 npm install
 npm start
 ```
 
-`http://127.0.0.1:5501` を開きます。Node.js + SQLiteで登録・ログイン・ゲスト、履歴、自己評価の推移、パンチ／シェイク／パンチングバッグに対応します。詳しい起動方法、HTTPS、保存内容、テストは [ACCOUNT_SETUP.md](ACCOUNT_SETUP.md) を参照してください。既存のPythonサーバーが同じポートを使用している場合は停止してから起動します。
+Buka `http://127.0.0.1:5501`. Hentikan server lain jika masih memakai port itu, atau pilih port lain:
 
-## このプログラムの概要
-
-このプロジェクトは、ただの対話型アプリではなく、感情をゲーム感覚で整理し、解放することを重視した作品です。ユーザーが抱えている悩みをテキストまたは音声で登録すると、アプリ側がカテゴリ分けを行い、対人関係・家族・仕事・お金・健康・勉強・デジタル・習慣などに対応するモンスターを生成します。その後、バトル画面でモンスターを攻撃し、結果画面で一段落つける流れになっています。
-
-ゲームの核となるのは、次の3つです。
-
-- 悩みの入力: 文字入力または音声入力で気持ちを残す
-- 分類と召喚: テキストから悩みの種類を推定し、該当するモンスターを選ぶ
-- バトルと感情の切り替え: 画面をクリックして攻撃するか、スマホのブラウザーで読み取るセンサー入力で攻撃する
-
-## 主な機能
-
-### 1. 悩みの入力
-
-ロビー画面で「今、何にモヤモヤしてる？」といった入力欄に、自分の感情や悩みを書き込めます。音声入力にも対応しており、マイクで話した内容を文字起こしし、感情分類に使う仕組みがあります。
-
-- テキスト入力
-- 音声入力
-- マイク音量の確認と感度調整
-- 音声のトーンや抑揚の簡易診断
-
-### 2. カテゴリ判定
-
-入力された文章は、`category.js` に定義されたルールベースの分類ロジックでカテゴリ分けされます。たとえば以下のような悩みを分類します。
-
-- 対人関係の悩み
-- 家族・生活環境の悩み
-- 仕事・キャリアの悩み
-- お金・経済の悩み
-- 健康・心身の悩み
-- 勉強・学習の悩み
-- デジタル・ITの悩み
-- 習慣・行動の悩み
-- 趣味・余暇の悩み
-
-分類結果に応じて、対応するモンスター画像や姿が選ばれます。
-
-### 3. モンスター召喚とバトル
-
-バトル画面では、悩みの対象がモンスターとして出現します。ユーザーはモンスターを攻撃してHPを減らし、討伐を目指します。攻撃には次の方法があります。
-
-- マウスやタップで画面上のモンスターをクリックする
-- スマホのブラウザーでセンサーを有効にし、動かして攻撃する
-
-最後に結果画面で誤差やダメージをまとめ、戦闘結果を表示します。
-
-### 4. 結果表示
-
-バトル終了後の結果画面では、何にモヤモヤしていたか、どの種類のモンスターに対したか、今回の戦いの成果を見られるようになっています。プレイヤーは、悩みを「倒した」感覚で気持ちを切り替える体験を持てる設計です。
-
-## ゲームの流れ
-
-1. ロビーで悩みを入力する
-2. 音声入力を使う場合はマイク確認を行う
-3. アプリが悩みを分類してモンスターを召喚する
-4. バトル画面で攻撃を行う
-5. 討伐結果を確認して、次の悩みへ進む
-
-## ファイル構成
-
-- `index.html`: ロビー画面
-- `battle.html`: バトル画面
-- `result.html`: 結果画面
-- `script.js`: トップレベルのロジックと表示制御
-- `battle.js`: バトルロジック、HP管理、攻撃判定
-- `category.js`: 悩みのカテゴリ分類ルール
-- `monster.js`: モンスターの生成と画像管理
-- `mic.js`: マイク入力・音量検出・音声認識
-- `ui.js`: UIの状態更新や画面制御
-- `motion.js`: スマホのセンサー読み取り、許可、単位変換
-- `zigsim.py`: 旧 ZIG SIM 接続用スクリプト（現在のゲームには不要）
-- `MOBILE_SETUP.md`: スマホでの起動手順（日本語）
-- `MOBILE_UPDATE_REPORT.md`: チーム共有用の変更内容・起動方法の説明
-- `tools/prepare_mobile.py`: APIキーを含まない公開用デモを作成
-- `assets/`: モンスターやロゴなどの画像素材
-- `tests/ui-flow.test.cjs`: 主要なUIフロー確認用テスト
-
-## 静的ゲストデモの起動方法
-
-以下はアカウントAPIを持たないゲスト専用デモです。登録と履歴には上記の `npm start` を使用してください。
-
-プロジェクトのフォルダーで、次のコマンドを実行します。
-
-```sh
-python tools/prepare_mobile.py
-python -m http.server 5501 --bind 127.0.0.1 --directory dist-mobile
+```powershell
+$env:PORT = "5503"
+npm start
 ```
 
-PCでは http://127.0.0.1:5501 を開きます。デモはテキスト分類で動作し、AI解析用のキーを含みません。スマホのセンサーにはHTTPSが必要です。別のターミナルで次を実行し、表示されたHTTPS URLをスマホで開きます。
+Node.js 20+ diperlukan (pengujian lokal: 20.11.1). `better-sqlite3` adalah modul native; jalankan `npm install` di OS server tujuan. Database dibuat otomatis di `data/metsu.sqlite` dan bertahan setelah restart. Folder `data/` tidak masuk Git. Hosting harus menyediakan disk persisten; implementasi ini untuk satu instance aplikasi.
 
-```sh
+## Akses HP melalui HTTPS
+
+Sensor dan voice input memerlukan HTTPS. Untuk tunnel, mulai server dengan cookie aman:
+
+```powershell
+$env:SECURE_COOKIES = "true"
+npm start
+```
+
+Di terminal lain:
+
+```powershell
 cloudflared tunnel --protocol http2 --url http://127.0.0.1:5501
 ```
 
-バトル画面ではセンサーへのアクセスを自動確認します。取得できる場合はスマホを1.5秒静止してから操作でき、許可がない・非対応の場合はタップで攻撃します。iOSなどで新しい許可にユーザー操作が必要な場合もタップで遊べます。詳しい手順は [MOBILE_SETUP.md](MOBILE_SETUP.md) を参照してください。公開する場合は `dist-mobile/` の内容だけを使用してください。
+Buka URL HTTPS dari tunnel. Cookie aman tidak dikirim melalui HTTP biasa. Untuk kembali menguji localhost melalui HTTP, set `$env:SECURE_COOKIES = "false"` lalu restart.
 
-## 必要な環境と注意点
+| Variabel opsional | Fungsi |
+| --- | --- |
+| `PORT` | Default 5501 |
+| `HOST` | Bind default 127.0.0.1 |
+| `METSU_DB` | Lokasi file SQLite |
+| `SECURE_COOKIES` | `true` untuk HTTPS di balik proxy/tunnel |
+| `PUBLIC_ORIGIN` | Origin publik tetap, misalnya `https://metsu.example.com` |
 
-- このゲームはブラウザ上で動作する静的サイトです
-- 文字入力と画面上の攻撃はマイクやセンサーなしでも遊べます
-- 音声入力を利用する場合は、ブラウザーの音声認識機能とマイクの許可が必要です
-- 外部のAIサービスや音声解析サービスを利用しているので、利用環境によっては接続が必要です
-- センサー値はブラウザー内で処理します。ZIG SIM、UDP、WebSocketサーバーは不要です
-- HTTPSとセンサーの許可が必要です。対応していない端末ではタップで攻撃できます
-- 別のアプリへ移動した場合はセンサーを停止し、戻るとアクセスを再確認します
-- 音声入力中は競合を避けるため診断用マイクメーターを停止します。音量・トーンで文字起こしを却下せず、音声入力時のモンスター判定にはテキストを使います
+Gunakan `npm start` untuk semua mode. Tidak ada langkah build demo statis. Server hanya menyajikan file frontend yang diizinkan; database tidak disajikan. Endpoint `/api.js` dibuat oleh server dengan konfigurasi kosong, sehingga file `api.js` lokal tidak diperlukan.
 
-## 作品の意図
+## Alur dan data
 
-Metsu は、ネガティブな感情を「消す」のではなく、言葉にして見える化し、攻撃することで一時的に距離を置く体験を狙っています。悩みをそのまま抱え込むのではなく、ゲームの中で可視化し、対話的に処理することで、気持ちの整理と切り替えを促す作品です。
+1. Pilih tamu, daftar, atau login. Akun memakai username 3–32 karakter dan password minimal 10 karakter, tanpa email.
+2. Akun melihat statistik dan riwayat; tamu langsung melihat pilihan mode.
+3. Pilih tangan → punch/shake, atau punching bag. Tombol lanjut meminta izin sensor jika browser membutuhkannya. Izin ditolak tetap bisa bermain dengan tap.
+4. Akun memberi penilaian stres sendiri 1–5, lalu memasukkan keluhan dan bermain.
+5. Setiap monster yang selesai dikalahkan dicatat untuk akun. Tamu tidak mengirim request penyimpanan riwayat.
+
+Satu play dapat berisi beberapa monster. Waktu battle adalah jumlah durasi melawan monster yang selesai, bukan waktu di menu. Battle yang ditinggalkan sebelum monster kalah belum dicatat. Grafik memakai penilaian pengguna satu kali per play, dirata-ratakan per tanggal pada zona waktu browser; bukan inferensi stres dari kekuatan pukulan atau diagnosis kesehatan. Grafik menampilkan maksimal 1.000 play terbaru dengan filter 30/90 hari/semua data itu. Statistik total mencakup semua riwayat; daftar monster dipaginasi 100 baris.
+
+SQLite menyimpan akun (hash scrypt + salt), sesi (hash token), waktu, kategori/jenis/bentuk monster, mode, penilaian stres, durasi, serangan, dan damage. **Isi keluhan dan transkrip suara tidak disimpan di database.** Server mengirim konfigurasi API AI kosong; klasifikasi memakai logika lokal yang sudah ada.
+
+Tamu membawa state sementara di `sessionStorage` untuk perpindahan halaman. Input dan hasil dibuang sesudah hasil ditampilkan atau saat kembali ke dashboard. Tidak ada arsip gameplay atau kamus koreksi ucapan untuk tamu. Pengaturan audio yang sudah ada terpisah dari riwayat gameplay; fitur ini tidak menghapus riwayat URL milik browser.
+
+Jika koneksi gagal, UI menandai hasil belum tersimpan dan menyediakan retry. Dashboard juga mencoba mengirim antrean sementara dari tab yang sama. Jangan menutup tab sebelum selesai menyimpan. Pengulangan request tidak menggandakan data, dan antrean hanya bisa dikirim untuk akun pemiliknya. Logout membuang antrean setelah konfirmasi bila masih ada data tertunda.
+
+Menu manajemen riwayat dapat menghapus semua riwayat akun sendiri dengan konfirmasi. Pemulihan password dan verifikasi email belum tersedia. Untuk backup lokal, hentikan server dahulu lalu salin folder `data/` ke lokasi aman. Jangan membagikan database.
+
+## Deteksi gerakan
+
+- Punch: kalibrasi diam 0,8 detik, satu pulsa percepatan, lalu harus tenang sebelum hit berikutnya. Cooldown 450 ms.
+- Shake: dua puncak berlawanan pada sumbu yang sama, bukan satu guncangan. Cooldown 400 ms.
+- Punching bag: mempertahankan detektor lama (gravitasi, gyro, kalibrasi 1,5 detik, rentang ayunan).
+- Semua mode mendukung tap. Gerakkan HP ringan dengan pegangan aman. Sensor membaca HP yang membuka halaman, bukan perangkat kedua.
+
+Ambang punch/shake diuji dengan sampel sintetis. Sensitivitas masih perlu diuji pada HP dan pemasangan bag yang sebenarnya.
+
+## Pengujian
+
+```powershell
+npm test
+npm run test:browser
+```
+
+Tes browser memakai Edge pada Windows. Pada OS lain, jalankan `npx playwright install chromium` dahulu. `BROWSER_CHANNEL` dapat memilih browser. Tes memakai database terpisah/in-memory, tidak menyentuh data pengguna. Cakupan: autentikasi, isolasi akun, persistensi SQLite, validasi/CSRF, guest tanpa riwayat, retry tanpa duplikat, sensor, mode, dan layout delapan lebar layar.
+
+## Struktur dan penggunaan proyek
+
+Jalankan perintah dari folder Metsu. Setelah `npm install` berhasil, penggunaan berikutnya cukup `npm start`. Biarkan terminal berjalan; tekan Ctrl+C untuk berhenti. Gunakan URL server, bukan Live Server atau membuka HTML langsung.
+
+- `server.cjs`: backend web, akun, dan riwayat SQLite.
+- `index.html`, `battle.html`, `result.html`: halaman aplikasi.
+- File JavaScript dan CSS: alur permainan, klasifikasi lokal, suara, sensor, dan tampilan.
+- `assets/`: gambar, termasuk variasi monster berdasarkan HP dan bentuk.
+- `tests/`: pengujian otomatis.
+- `package.json`, `package-lock.json`: perintah dan dependensi Node.js.
+- `data/`: akun dan riwayat lokal; jangan dihapus jika data masih diperlukan.
+
+Jika muncul `EADDRINUSE`, hentikan server lain atau ubah `PORT`. Jika tunnel menampilkan 502, pastikan server berjalan dan port tunnel sama dengan server. Untuk akses HP, biarkan server dan tunnel berjalan, lalu buka URL HTTPS tunnel di HP. Sensor dan mikrofon tetap bergantung pada izin dan dukungan perangkat/browser; tap tersedia sebagai alternatif.
