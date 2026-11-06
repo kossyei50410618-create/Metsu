@@ -174,9 +174,9 @@ const { createApp } = require('../server.cjs');
     await page.locator('#voice-btn').click();
     await page.waitForFunction(() => !document.getElementById('voice-finish-btn').disabled);
     await page.waitForFunction(() => window.getMicSessionStats().toneSampleCount >= 5);
-    await page.locator('#voice-finish-btn').click();
-    await page.getByRole('button', { name: 'この内容で決定' }).click();
     assert.equal(await page.evaluate(() => window.captureCount), 3);
+    await page.locator('#voice-finish-btn').click();
+    // A transcript with unknown confidence must proceed without confirmation.
     await page.waitForURL('**/battle.html');
     assert.equal(recordings.length, 1);
     assert.ok(recordings[0].audio.length > 100);

@@ -242,9 +242,7 @@ test('empty recognition and browser abort are not reported as user cancellation'
 test('recognized words reach generation even without diagnostic volume', async () => {
   const a = app('index.html');
   a.run(`
-    CONFIG.CONFIRM_MODE = 'never';
     analyzeSpeechText = async () => '';
-    sleep = async () => {};
     let generated = false;
     generateMonster = async () => { generated = true; };
     window.SpeechRecognition = class {
@@ -452,8 +450,6 @@ function installMicrophone(a) {
       start() { this.onstart(); }
       stop() {}
     };
-    CONFIG.CONFIRM_MODE = 'never';
-    sleep = async () => {};
   `);
 }
 

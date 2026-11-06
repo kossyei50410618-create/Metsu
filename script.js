@@ -5,8 +5,6 @@ const CONFIG = {
   SAFETY_CONFIDENCE_THRESHOLD: 0.82,
 
   // 【追加】音声認識の精度向上用の設定
-  CONFIRM_MODE: 'uncertain',  // 認識結果の確認画面: 'always'=毎回 / 'uncertain'=自信が低いときだけ / 'never'=出さない
-  CONFIRM_CONFIDENCE: 0.8,    // これ未満（または信頼度不明）のとき確認画面を出す
   MIN_SPEECH_VOLUME: 0.02,    // 録音中の最大音量がこれ未満なら「声が小さい／雑音」として聞き返す
   USE_ON_DEVICE_BIASING: true, // 対応ブラウザでは端末内認識＋単語ブーストを使う
   SILENCE_END_MS: 1800,       // 最後の発話からこの時間が経ったら認識を終了
@@ -32,7 +30,7 @@ const CORRECTION_DICT = {
 // ==============================
 // 補正辞書（手書き＋学習）
 // ・CORRECTION_DICT: 自分で書く置き換え表
-// ・学習辞書: 確認画面でユーザーが直した内容を localStorage に保存して自動で使う
+// ・学習辞書: 以前の確認画面で保存した sessionStorage の補正を引き続き使う
 // ==============================
 const LEARNED_DICT_KEY = 'speechLearnedCorrections';
 
@@ -45,15 +43,6 @@ function loadLearnedDict() {
   }
 }
 
-function saveLearnedDict(dict) {
-  if (window.MetsuAccount?.guest) return;
-  try {
-    // 肥大化を防ぐため新しい200件までに制限
-    const entries = Object.entries(dict).slice(-200);
-    sessionStorage.setItem(`${LEARNED_DICT_KEY}:${window.MetsuAccount?.user?.id || 'legacy'}`, JSON.stringify(Object.fromEntries(entries)));
-  } catch (e) { /* 保存できなくても動作は続ける */ }
-}
-
 function getCorrectionDict() {
   return { ...CORRECTION_DICT, ...loadLearnedDict() };
 }
@@ -64,30 +53,6 @@ function applyCorrectionDict(text) {
     if (wrong && result.includes(wrong)) result = result.split(wrong).join(right);
   }
   return result;
-}
-
-// 「認識結果 → ユーザーが直した文」の差分から、置き換えペアを学習する
-function learnCorrection(original, confirmed) {
-  const a = normalizeSpeechTranscript(original);
-  const b = normalizeSpeechTranscript(confirmed);
-  if (!a || !b || a === b) return;
-
-  // 先頭と末尾の共通部分を除き、違う部分だけを取り出す
-  let p = 0;
-  while (p < a.length && p < b.length && a[p] === b[p]) p++;
-  let q = 0;
-  while (q < a.length - p && q < b.length - p && a[a.length - 1 - q] === b[b.length - 1 - q]) q++;
-
-  const wrong = a.slice(p, a.length - q);
-  const right = b.slice(p, b.length - q);
-
-  // 短すぎる（誤爆しやすい）／長すぎる（文全体の書き換え）ものは学習しない
-  if (wrong.length < 2 || wrong.length > 10 || right.length < 1 || right.length > 10) return;
-
-  const dict = loadLearnedDict();
-  delete dict[wrong]; // 新しいものを末尾に
-  dict[wrong] = right;
-  saveLearnedDict(dict);
 }
 
 // 単語ブースト用のリスト（期待語彙＋学習した正しい語）
@@ -108,10 +73,6 @@ function getElement(id) {
   return document.getElementById(id);
 }
 window.getElement = getElement;
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function resetToInputScreen(event) {
   event?.preventDefault();
@@ -534,86 +495,6 @@ function correctTranscript(segments) {
   return { text, confidence: avgConfidence, corrected };
 }
 
-// 確認画面に出す「もしかして」候補（最大 MAX_ALTERNATIVES 件）を作る
-function buildAlternatives(segments, best) {
-  const list = [best];
-  const maxAlt = Math.max(...segments.map((c) => c.length));
-  for (let k = 0; k < maxAlt; k++) {
-    const joined = segments.map((c) => (c[k] || c[0]).text).join('');
-    const text = normalizeSpeechTranscript(removeFillers(applyCorrectionDict(joined)));
-    if (text && !list.includes(text)) list.push(text);
-  }
-  return list.slice(0, CONFIG.MAX_ALTERNATIVES);
-}
-
-// ==============================
-// 認識結果の確認画面
-// 候補をタップして選ぶ／入力欄で直接直す／やり直す
-// 戻り値: 確定した文字列 ／ やり直しなら null
-// ==============================
-function confirmTranscript(anchor, options) {
-  return new Promise((resolve) => {
-    if (!anchor) { resolve(options[0]); return; }
-
-    const panel = document.createElement('div');
-    panel.id = 'transcript-confirm';
-    panel.setAttribute('role', 'group');
-    panel.setAttribute('aria-label', '認識結果の確認');
-    panel.style.cssText = 'margin:12px 0;padding:12px;border:1px solid #888;border-radius:8px;';
-
-    const label = document.createElement('p');
-    label.textContent = 'こう聞こえました。違う場合は候補を選ぶか、直接直してください。';
-    label.style.margin = '0 0 8px';
-    panel.appendChild(label);
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.value = options[0];
-    input.style.cssText = 'width:100%;box-sizing:border-box;padding:8px;margin-bottom:8px;';
-    input.setAttribute('aria-label', '認識結果（編集できます）');
-
-    if (options.length > 1) {
-      const chips = document.createElement('div');
-      chips.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;';
-      options.forEach((opt) => {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.textContent = opt;
-        chip.style.cssText = 'padding:6px 10px;border-radius:16px;cursor:pointer;';
-        chip.addEventListener('click', () => { input.value = opt; input.focus(); });
-        chips.appendChild(chip);
-      });
-      panel.appendChild(chips);
-    }
-    panel.appendChild(input);
-
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;gap:8px;';
-
-    const okBtn = document.createElement('button');
-    okBtn.type = 'button';
-    okBtn.textContent = 'この内容で決定';
-    const retryBtn = document.createElement('button');
-    retryBtn.type = 'button';
-    retryBtn.textContent = 'やり直す';
-    actions.append(okBtn, retryBtn);
-    panel.appendChild(actions);
-
-    function done(value) {
-      panel.remove();
-      resolve(value);
-    }
-    okBtn.addEventListener('click', () => done(input.value.trim() || null));
-    retryBtn.addEventListener('click', () => done(null));
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); done(input.value.trim() || null); }
-    });
-
-    anchor.insertAdjacentElement('afterend', panel);
-    input.focus();
-  });
-}
-
 function updatePipelineStage(message) {
   const stage = document.getElementById('pipeline-stage');
   if (stage) stage.innerText = message;
@@ -639,7 +520,7 @@ async function startRecognition() {
   // Release any diagnostic session before starting this utterance.
   stopMicMeter();
 
-  updatePipelineStage('ステップ 1/4: 音声をテキスト化しています');
+  updatePipelineStage('ステップ 1/3: 音声を入力しています');
   status.innerText = '録音中... 話してください。';
 
   try {
@@ -664,9 +545,8 @@ async function startRecognition() {
     }
 
     // 誤認識の補正（辞書＋候補の選び直し）
-    updatePipelineStage('ステップ 1.5/4: 認識結果を確認しています');
     const result = correctTranscript(segments);
-    let normalizedTranscript = normalizeSpeechTranscript(removeFillers(result.text));
+    const normalizedTranscript = normalizeSpeechTranscript(removeFillers(result.text));
 
     if (!normalizedTranscript) {
       status.innerText = '音声が聞き取れませんでした。もう一度お話しください。';
@@ -674,33 +554,10 @@ async function startRecognition() {
       return;
     }
 
-    // 【追加】自信が低い（または信頼度不明）ときは、確認画面で選ぶ／直す
-    const needConfirm =
-      CONFIG.CONFIRM_MODE === 'always' ||
-      (CONFIG.CONFIRM_MODE === 'uncertain' &&
-        (result.confidence === null || result.confidence < CONFIG.CONFIRM_CONFIDENCE));
-
-    if (needConfirm) {
-      updatePipelineStage('ステップ 1.8/4: 認識結果を確認してください');
-      status.innerText = '聞き取り結果を確認してください。';
-      const options = buildAlternatives(segments, normalizedTranscript);
-      const confirmed = await confirmTranscript(status, options);
-
-      if (confirmed === null) {
-        status.innerText = 'やり直す場合は、もう一度音声ボタンを押してください。';
-        updatePipelineStage('音声入力がキャンセルされました。');
-        return;
-      }
-
-      // 直した内容を学習して、次回以降の補正に使う
-      learnCorrection(normalizedTranscript, confirmed);
-      normalizedTranscript = normalizeSpeechTranscript(confirmed);
-    }
-
     inputText.value = normalizedTranscript;
     inputText.dispatchEvent(new Event('input', { bubbles: true }));
-    updatePipelineStage('ステップ 2/4: テキスト解析を行っています');
-    status.innerText = '認識完了。解析中...';
+    updatePipelineStage('ステップ 2/3: AIで内容と声を解析しています');
+    status.innerText = `認識した内容: 「${normalizedTranscript}」`;
 
     let analysis = '';
     let analysisStatus = 'failed';
@@ -722,13 +579,10 @@ async function startRecognition() {
         : Promise.resolve(),
     ]);
 
-    updatePipelineStage('ステップ 3/4: モンスターを生成しています');
-    status.innerText = '認識完了。少し待ってから出現します...';
-    if (Date.now() < geminiDeadlineAt) await sleep(1200);
+    updatePipelineStage('ステップ 3/3: モンスターを生成しています');
     await generateMonster(analysis || normalizedTranscript, audioAnalysis, {
       analysisStatus, audioAnalysisStatus, inputMode: 'voice',
     });
-    updatePipelineStage('ステップ 4/4: モンスター討伐へ');
   } catch (error) {
     status.innerText = error.message || '音声認識中にエラーが発生しました。';
     updatePipelineStage('音声認識中にエラーが発生しました。');
