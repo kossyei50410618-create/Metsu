@@ -37,7 +37,9 @@ GEMINI_MODEL=gemini-3.1-flash-lite
 
 File `api.js` lokal tidak lagi dibaca oleh frontend maupun backend. Tanpa key atau ketika Gemini gagal, game tetap memakai teks asli dan klasifikasi lokal. Dengan key, teks keluhan/transkrip dikirim ke Google untuk diringkas; teks tersebut tidak ditambahkan ke database riwayat.
 
-Proxy membatasi input 4.000 karakter, 20 permintaan per menit untuk seluruh server, 2 permintaan bersamaan, dan waktu tunggu 8 detik. Tidak ada retry otomatis. Batas ini juga berlaku untuk tamu dan bukan batas biaya bulanan; endpoint masih dapat diakses pengguna URL tunnel. Pesan kesalahan dari Google tidak diteruskan mentah ke browser.
+Proxy membatasi input 4.000 karakter, 20 permintaan per menit untuk seluruh server, 2 permintaan bersamaan, dan waktu tunggu 18 detik (browser 20 detik). Tidak ada retry otomatis. Batas ini juga berlaku untuk tamu dan bukan batas biaya bulanan; endpoint masih dapat diakses pengguna URL tunnel. Pesan kesalahan dari Google tidak diteruskan mentah ke browser.
+
+Input mic menggunakan SpeechRecognition untuk transkripsi bahasa Jepang dan Web Audio API untuk mengukur volume, pitch, serta variasi volume selama ucapan yang sama. Gemini menerima teks transkripsi dan angka fitur suara melalui dua permintaan paralel; audio mentah tidak diunggah. Halaman result menampilkan analisis suara dan analisis teks di bawah statistik, termasuk dalam guest mode. Jika browser tidak dapat mengukur suara atau AI gagal, result menampilkan penjelasan. Perangkat yang membatasi akses mic bersamaan masih dapat melanjutkan dengan transkripsi saja.
 
 Perubahan ini mengaktifkan jalur analisis teks lewat backend. Pengumpulan fitur suara saat dikte masih dinonaktifkan untuk menghindari konflik mikrofon; panel `音声解析` pada result tetap tersembunyi jika tidak ada data analisis suara. Mengisi key saja tidak memulihkan pengumpulan fitur suara.
 

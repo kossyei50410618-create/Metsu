@@ -78,6 +78,61 @@ const { createApp } = require('../server.cjs');
     assert.equal(await page.evaluate(() => sessionStorage.getItem('metsuBattleData')), null);
     assert.equal(await page.evaluate(() => sessionStorage.getItem('metsuResultData')), null);
     assert.equal(guestWrites, 0); assert.equal(db.prepare('SELECT COUNT(*) AS n FROM battles').get().n, 2);
+    await page.locator('#replay-btn').click();
+    await page.locator('#choose-mode').click();
+    await page.locator('#voice-btn').waitFor();
+    const voiceRequests = [];
+    await page.route('**/api/analyze', route => {
+      const body = route.request().postDataJSON(); voiceRequests.push(body);
+      return route.fulfill({ json: { text: body.kind === 'speech'
+        ? '仕事に対する怒り。' : '・声のトーン: 安定した声\n・感情: 不満の可能性' } });
+    });
+    // Exercise real browser Web Audio processing with a deterministic microphone
+    // waveform; only speech recognition and the external AI are substituted.
+    await page.evaluate(() => {
+      navigator.mediaDevices.getUserMedia = async () => {
+        const audio = new AudioContext(); await audio.resume();
+        const oscillator = audio.createOscillator(); oscillator.frequency.value = 200;
+        const gain = audio.createGain(); gain.gain.value = 0.15;
+        const destination = audio.createMediaStreamDestination();
+        oscillator.connect(gain).connect(destination); oscillator.start();
+        const track = destination.stream.getAudioTracks()[0];
+        const stop = track.stop.bind(track);
+        track.stop = () => { stop(); oscillator.stop(); void audio.close(); };
+        return destination.stream;
+      };
+      window.SpeechRecognition = class {
+        start() {
+          this.onstart();
+          setTimeout(() => {
+            const result = [{ transcript: '仕事がつらい', confidence: 0.99 }];
+            result.isFinal = true;
+            this.onresult({ resultIndex: 0, results: [result] }); this.onend();
+          }, 900);
+        }
+        stop() {}
+      };
+    });
+    await page.locator('#voice-btn').click();
+    await page.waitForURL('**/battle.html');
+    const acoustic = JSON.parse(voiceRequests.find(body => body.kind === 'audio').input);
+    assert.ok(acoustic.maxVolume > 0 && acoustic.toneSampleCount >= 3);
+    assert.ok(acoustic.avgTone >= 80 && acoustic.avgTone <= 1000);
+    assert.equal(voiceRequests.length, 2);
+    await page.locator('#monster').waitFor();
+    for (let i = 0; i < 50; i++) {
+      if (await page.locator('#monster').isDisabled()) break;
+      await page.locator('#monster').click();
+    }
+    await page.waitForURL('**/result.html', { timeout: 15000 });
+    assert.equal(await page.locator('#result-text-analysis').innerText(), '仕事に対する怒り。');
+    assert.equal(await page.locator('#audio-analysis-panel').isVisible(), true);
+    assert.match(await page.locator('#result-audio-analysis').innerText(), /声のトーン/);
+    for (const width of [320, 390, 768, 1280]) {
+      await page.setViewportSize({ width, height: 844 }); await noOverflow(`voice result ${width}`);
+    }
+    await shot('voice-ai-result');
+    assert.equal(guestWrites, 0);
     await page.locator('#replay-btn').click(); await page.locator('#leave-btn').click();
     for (const width of [320, 375, 390, 447, 448, 620, 768, 1280]) {
       await page.setViewportSize({ width, height: 844 }); await noOverflow(`welcome ${width}`);

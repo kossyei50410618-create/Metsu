@@ -15,7 +15,7 @@ function installGemini(app, { apiKey = '', audioKey = '', model = 'gemini-3.1-fl
     if (active >= 2 || count >= 20) return res.status(429).json({ error: '解析が混み合っています。しばらくしてからお試しください。' });
     count++; active++;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 18000);
     try {
       const upstream = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST', signal: controller.signal,

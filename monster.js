@@ -144,7 +144,7 @@ function applyBattleTheme(monsterStyle) {
   });
 }
 
-async function generateMonster(analysisText = null, audioAnalysisText = '') {
+async function generateMonster(analysisText = null, audioAnalysisText = '', analysisMeta = {}) {
   const inputText = getElement('input-text');
   const rawText = inputText ? inputText.value.trim() : '';
   const storedData = readBattleData();
@@ -153,9 +153,11 @@ async function generateMonster(analysisText = null, audioAnalysisText = '') {
   if (!normalizedAnalysisText && rawText) {
     try {
       normalizedAnalysisText = await analyzeSpeechText(rawText);
+      analysisMeta.analysisStatus = 'success';
     } catch (error) {
       console.warn('Speech API 分析に失敗したため、入力テキストを要約表示として使います:', error);
       normalizedAnalysisText = rawText;
+      analysisMeta.analysisStatus = 'failed';
     }
   }
 
@@ -182,7 +184,10 @@ async function generateMonster(analysisText = null, audioAnalysisText = '') {
       ...(window.MetsuAccount ? window.MetsuAccount.newRun() : {}),
       rawText: rawText || storedData?.rawText || sourceText,
       analysisText: normalizedAnalysisText || storedData?.analysisText || '',
-      audioAnalysisText: audioAnalysisText || storedData?.audioAnalysisText || '',
+      audioAnalysisText,
+      analysisStatus: analysisMeta.analysisStatus || 'unknown',
+      audioAnalysisStatus: analysisMeta.audioAnalysisStatus || 'not-requested',
+      inputMode: analysisMeta.inputMode || 'text',
       category: classifiedCategory,
       queue: monsterQueue,
       queueIndex: 0,

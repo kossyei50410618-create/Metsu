@@ -61,6 +61,9 @@ let micMeterRunning = false;
 
 // マイクが初期化済みか
 let micMeterInitialized = false;
+let micMeterInitializing = false;
+let micCaptureGeneration = 0;
+let micAnimationFrame = null;
 let micSensitivity = 0.8;
 let micVolumeHistory = [];
 
@@ -505,7 +508,7 @@ function updateMicMeter() {
     // マイクメーターが動作中なら
     // 次のフレームでも解析を行う
     if (micMeterRunning) {
-        requestAnimationFrame(updateMicMeter);
+        micAnimationFrame = requestAnimationFrame(updateMicMeter);
     }
 }
 
@@ -614,6 +617,7 @@ window.getMicSessionStats = function () {
 
         // 声の高さを取得できた回数
         toneSampleCount: micToneHistory.length,
+        intonation: micIntonation,
     };
 };
 
@@ -749,7 +753,8 @@ async function calibrateMic() {
 async function initMicMeter() {
 
     // すでに初期化済みなら何もしない
-    if (micMeterInitialized) return;
+    if (micMeterInitialized) return true;
+    if (micMeterInitializing) return false;
 
 
     // ブラウザがマイク入力に対応していなければ終了
@@ -761,21 +766,37 @@ async function initMicMeter() {
     }
 
 
+    micMeterInitializing = true;
+    const generation = ++micCaptureGeneration;
+    let capturedStream = null;
+    let capturedContext = null;
     try {
 
         // 【修正】ノイズ抑制などを有効にしてマイク使用の許可を取得
-        micStream =
+        capturedStream =
             await navigator.mediaDevices.getUserMedia({
                 audio: MIC_AUDIO_CONSTRAINTS
             });
+        if (generation !== micCaptureGeneration) {
+            capturedStream.getTracks().forEach(track => track.stop());
+            return false;
+        }
 
 
         // Web Audio APIの音声処理環境を作成
-        micAudioContext =
+        capturedContext =
             new (
                 window.AudioContext ||
                 window.webkitAudioContext
             )();
+        if (capturedContext.state === 'suspended') await capturedContext.resume();
+        if (generation !== micCaptureGeneration) {
+            capturedStream.getTracks().forEach(track => track.stop());
+            void capturedContext.close();
+            return false;
+        }
+        micStream = capturedStream;
+        micAudioContext = capturedContext;
 
 
         // マイク入力をAudioContextに接続
@@ -851,9 +872,20 @@ async function initMicMeter() {
 
         // 音量メーターの更新を開始
         updateMicMeter();
+        return true;
 
 
     } catch (error) {
+        capturedStream?.getTracks().forEach(track => track.stop());
+        if (capturedContext && capturedContext.state !== 'closed') void capturedContext.close();
+        if (generation !== micCaptureGeneration) return false;
+        micMeterRunning = false;
+        micMeterInitialized = false;
+        micStream = null;
+        micAudioContext = null;
+        micSource = null;
+        micAnalyser = null;
+        micDataArray = null;
 
         // マイクへのアクセスに失敗した場合
         const status =
@@ -871,6 +903,9 @@ async function initMicMeter() {
             'マイクメーター初期化失敗:',
             error
         );
+        return false;
+    } finally {
+        if (generation === micCaptureGeneration) micMeterInitializing = false;
     }
 }
 
@@ -882,6 +917,12 @@ async function initMicMeter() {
 // マイクとAudioContextを停止して、
 // 使用したリソースを解放する
 function stopMicMeter() {
+    ++micCaptureGeneration;
+    micMeterInitializing = false;
+    if (micAnimationFrame !== null) {
+        cancelAnimationFrame(micAnimationFrame);
+        micAnimationFrame = null;
+    }
 
     // メーターの更新を停止
     micMeterRunning = false;

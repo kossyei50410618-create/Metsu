@@ -205,7 +205,7 @@ test('mic diagnostics remain available inside a collapsed disclosure', () => {
   assert.match(markup, /id="mic-intonation-value"/);
 });
 
-test('voice capture starts synchronously without a second microphone stream', async () => {
+test('voice recognition starts synchronously and remains usable when acoustic capture fails', async () => {
   const a = app('index.html');
   a.run(`
     let recognition;
@@ -426,6 +426,101 @@ test('result page renders stored battle result details', () => {
   assert.equal(r.elements.get('result-total-damage').innerText, '54');
   assert.equal(r.elements.get('result-avg-damage').innerText, '18');
   assert.equal(r.elements.has('result-source-text'), false);
+  assert.equal(r.elements.get('result-text-analysis').innerText, 'テスト結果の解析');
+});
+
+function installMicrophone(a) {
+  a.run(`
+    let recognition, stoppedTracks = 0, closedContexts = 0;
+    let frameId = 0;
+    requestAnimationFrame = () => ++frameId;
+    cancelAnimationFrame = () => {};
+    navigator.mediaDevices = { getUserMedia: async () => ({
+      getTracks: () => [{ stop() { stoppedTracks++; } }]
+    }) };
+    window.AudioContext = class {
+      state = 'suspended'; sampleRate = 48000;
+      async resume() { this.state = 'running'; }
+      async close() { this.state = 'closed'; closedContexts++; }
+      createMediaStreamSource() { return { connect() {} }; }
+      createAnalyser() { return { getFloatTimeDomainData(data) {
+        for (let i = 0; i < data.length; i++) data[i] = 0.15 * Math.sin(2 * Math.PI * 200 * i / 48000);
+      } }; }
+    };
+    window.SpeechRecognition = class {
+      constructor() { recognition = this; }
+      start() { this.onstart(); }
+      stop() {}
+    };
+    CONFIG.CONFIRM_MODE = 'never';
+    sleep = async () => {};
+  `);
+}
+
+test('measured microphone waveform reaches both AI requests and survives battle to guest result', async () => {
+  const a = app('index.html');
+  installMicrophone(a);
+  a.run(`
+    const aiCalls = [];
+    fetch = async (_url, options) => {
+      const body = JSON.parse(options.body); aiCalls.push(body);
+      return { ok: true, json: async () => ({ text: body.kind === 'speech'
+        ? '仕事に対する怒り。' : '・声のトーン: 落ち着いた声\\n・感情: 不満の可能性' }) };
+    };
+  `);
+  const pending = a.run('runInputAction(true)');
+  // Let getUserMedia and AudioContext.resume settle while recognition is active.
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(a.run('micAudioContext.state'), 'running');
+  a.run(`
+    updateMicMeter(); updateMicMeter(); updateMicMeter();
+    const result = [{ transcript: '仕事がつらい', confidence: 0.95 }];
+    result.isFinal = true;
+    recognition.onresult({ resultIndex: 0, results: [result] });
+    recognition.onend();
+  `);
+  await pending;
+  assert.equal(a.run('aiCalls.length'), 2);
+  const acoustic = JSON.parse(a.run("aiCalls.find(call => call.kind === 'audio').input"));
+  assert.ok(acoustic.maxVolume > 0);
+  assert.ok(acoustic.avgTone >= 80 && acoustic.avgTone <= 1000);
+  assert.ok(acoustic.toneSampleCount >= 3);
+  assert.equal(typeof acoustic.intonation, 'number');
+  assert.equal(a.run('stoppedTracks'), 1);
+  assert.equal(a.run('closedContexts'), 1);
+  const saved = JSON.parse(a.state.get('metsuBattleData'));
+  assert.equal(saved.analysisStatus, 'success');
+  assert.equal(saved.audioAnalysisStatus, 'success');
+  const battle = app('battle.html', saved);
+  battle.run('finalizeBattleResult()');
+  const r = app('result.html');
+  r.state.set('metsuResultData', battle.state.get('metsuResultData'));
+  r.run(`window.MetsuAccount = { read: () => null }; renderResultScreen();`);
+  assert.equal(r.elements.get('audio-analysis-panel').hidden, false);
+  assert.match(r.elements.get('result-audio-analysis').innerText, /声のトーン/);
+  assert.equal(r.elements.get('result-text-analysis').innerText, '仕事に対する怒り。');
+  assert.equal(r.state.has('metsuResultData'), false);
+});
+
+test('microphone permission granted after stopping releases tracks without opening an audio context', async () => {
+  const a = app('index.html');
+  installMicrophone(a);
+  a.run(`let grantMic; navigator.mediaDevices.getUserMedia = () => new Promise(resolve => { grantMic = resolve; });`);
+  const pending = a.run('initMicMeter()');
+  a.run(`stopMicMeter(); grantMic({ getTracks: () => [{ stop() { stoppedTracks++; } }] });`);
+  assert.equal(await pending, false);
+  assert.equal(a.run('stoppedTracks'), 1);
+  assert.equal(a.run('micAudioContext'), null);
+});
+
+test('result explains failed AI and unavailable voice measurements instead of hiding them', () => {
+  const r = app('result.html');
+  r.state.set('metsuResultData', JSON.stringify({ inputMode: 'voice', analysisStatus: 'failed',
+    analysisText: 'raw fallback', audioAnalysisStatus: 'unavailable' }));
+  r.run('renderResultScreen()');
+  assert.equal(r.elements.get('audio-analysis-panel').hidden, false);
+  assert.match(r.elements.get('result-text-analysis').innerText, /利用できなかった/);
+  assert.match(r.elements.get('result-audio-analysis').innerText, /十分に測定できません/);
 });
 
 test('selected hand modes route samples through their own detector instead of the bag algorithm', () => {

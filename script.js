@@ -120,7 +120,7 @@ function resetToInputScreen(event) {
   window.location.href = 'index.html';
 }
 
-const GEMINI_ANALYSIS_TIMEOUT_MS = 8000;
+const GEMINI_ANALYSIS_TIMEOUT_MS = 20000;
 
 async function generateResponse(_prompt, input, options = {}) {
   const remainingMs = (options.deadlineAt || Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) - Date.now();
@@ -143,7 +143,8 @@ async function generateResponse(_prompt, input, options = {}) {
 
 async function analyzeSpeechText(transcript, deadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS) {
   const analysis = await generateResponse(null, transcript, { kind: 'speech', deadlineAt });
-  return /[。！？!?」』]$/.test(analysis) ? analysis : transcript;
+  if (!/[。！？!?」』]$/.test(analysis)) throw new Error('AI analysis was incomplete');
+  return analysis;
 }
 
 function shouldAnalyzeAudioFeatures(audioStats) {
@@ -285,6 +286,9 @@ async function listen(allowBiasing = true, onInterim = null) {
 
     recognition.onstart = () => {
       window.startMicVolumeCollection();
+      // Keep recognition.start() in the click gesture; measure the same utterance
+      // independently once recognition has acquired its microphone.
+      void window.initMicMeter();
     };
 
     recognition.onresult = (event) => {
@@ -497,7 +501,7 @@ async function startRecognition() {
     updatePipelineStage('安全な接続が必要です');
     return;
   }
-  // Recognition owns capture. Start directly from the click on mobile.
+  // Release any diagnostic session before starting this utterance.
   stopMicMeter();
 
   updatePipelineStage('ステップ 1/4: 音声をテキスト化しています');
@@ -509,7 +513,8 @@ async function startRecognition() {
     });
     window.stopMicVolumeCollection();
 
-    const audioStats = null; // Diagnostic capture is separate from dictation.
+    const audioStats = window.getMicSessionStats();
+    stopMicMeter();
 
     const segments = recognized.segments.filter((cands) => cands.length > 0 && cands[0].text);
     if (segments.length === 0) {
@@ -552,35 +557,37 @@ async function startRecognition() {
       normalizedTranscript = normalizeSpeechTranscript(confirmed);
     }
 
-    stopMicMeter();
     inputText.value = normalizedTranscript;
     inputText.dispatchEvent(new Event('input', { bubbles: true }));
     updatePipelineStage('ステップ 2/4: テキスト解析を行っています');
     status.innerText = '認識完了。解析中...';
 
     let analysis = '';
+    let analysisStatus = 'failed';
+    let audioAnalysisStatus = shouldAnalyzeAudioFeatures(audioStats) ? 'failed' : 'unavailable';
     const geminiDeadlineAt = Date.now() + GEMINI_ANALYSIS_TIMEOUT_MS;
-    try {
-      analysis = await analyzeSpeechText(normalizedTranscript, geminiDeadlineAt);
-      status.innerText = `認識完了: ${normalizedTranscript}`;
-    } catch (error) {
-      console.warn('音声解析エラー:', error);
-      status.innerText = `認識完了: ${normalizedTranscript}`;
-    }
-
     let audioAnalysis = '';
-    try {
-      if (Date.now() < geminiDeadlineAt && shouldAnalyzeAudioFeatures(audioStats)) {
-        audioAnalysis = await analyzeAudioFeatures(audioStats, geminiDeadlineAt);
-      }
-    } catch (error) {
-      console.warn('音響特徴量解析エラー:', error);
-    }
+    // Both requests get the full time budget instead of audio receiving only
+    // whatever remains after text analysis.
+    await Promise.all([
+      analyzeSpeechText(normalizedTranscript, geminiDeadlineAt).then(text => {
+        analysis = text;
+        analysisStatus = 'success';
+      }).catch(error => console.warn('音声解析エラー:', error)),
+      shouldAnalyzeAudioFeatures(audioStats)
+        ? analyzeAudioFeatures(audioStats, geminiDeadlineAt).then(text => {
+          audioAnalysis = text;
+          audioAnalysisStatus = 'success';
+        }).catch(error => console.warn('音響特徴量解析エラー:', error))
+        : Promise.resolve(),
+    ]);
 
     updatePipelineStage('ステップ 3/4: モンスターを生成しています');
     status.innerText = '認識完了。少し待ってから出現します...';
     if (Date.now() < geminiDeadlineAt) await sleep(1200);
-    await generateMonster(analysis || normalizedTranscript, audioAnalysis);
+    await generateMonster(analysis || normalizedTranscript, audioAnalysis, {
+      analysisStatus, audioAnalysisStatus, inputMode: 'voice',
+    });
     updatePipelineStage('ステップ 4/4: モンスター討伐へ');
   } catch (error) {
     status.innerText = error.message || '音声認識中にエラーが発生しました。';

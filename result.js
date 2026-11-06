@@ -73,8 +73,14 @@ function renderResultScreen() {
 
   const audioAnalysisPanel = document.getElementById('audio-analysis-panel');
   const audioAnalysisText = typeof data.audioAnalysisText === 'string' ? data.audioAnalysisText.trim() : '';
-  if (audioAnalysisPanel) audioAnalysisPanel.hidden = !audioAnalysisText;
-  setText('result-audio-analysis', audioAnalysisText);
+  if (audioAnalysisPanel) audioAnalysisPanel.hidden = !audioAnalysisText && data.inputMode !== 'voice';
+  setText('result-audio-analysis', audioAnalysisText || (data.audioAnalysisStatus === 'failed'
+    ? 'AIによる音声解析を利用できませんでした。'
+    : '声の特徴を十分に測定できませんでした。マイクの許可や入力音量を確認してください。'));
+  const analysisText = typeof data.analysisText === 'string' ? data.analysisText.trim() : '';
+  setText('result-text-analysis', data.analysisStatus === 'failed'
+    ? 'AIによるテキスト解析を利用できなかったため、入力内容から分類しました。'
+    : analysisText || 'AIによるテキスト解析の結果がありません。');
 
   if (window.MetsuAccount && !window.MetsuAccount.read('metsuBattleData')?.ownerId) {
     // Guest result is displayed from memory, then discarded rather than archived.
